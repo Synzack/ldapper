@@ -3,6 +3,7 @@ package Queries
 import (
 	"fmt"
 	"ldapper/Globals"
+	"regexp"
 	"strings"
 
 	"github.com/go-ldap/ldap/v3"
@@ -21,9 +22,12 @@ func NetGroupQuery(groupInput string, baseDN string, conn *ldap.Conn) []string {
 
 	// if LdapSearch returns information
 	if len(result.Entries) > 0 {
-		for _, cn := range result.Entries[0].GetAttributeValues("member") {
-			s := strings.Split(cn, ",")                               // split at every comma
-			cn := strings.Replace(s[0], "CN=", "", -1)                // remove all CN= from string
+		for _, dn := range result.Entries[0].GetAttributeValues("member") {
+			regexCN := regexp.MustCompile(`CN=(.*?),[A-Z]{2}=`)
+			match := regexCN.FindAllStringSubmatch(dn, -1)
+			cn := match[0][1]
+
+			cn = strings.Replace(cn, "\\", "", -1)
 			cn = strings.Replace(cn, "(", ldap.EscapeFilter("("), -1) //Escape parenthesis
 			cn = strings.Replace(cn, ")", ldap.EscapeFilter(")"), -1)
 
