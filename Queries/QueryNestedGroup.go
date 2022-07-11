@@ -1,0 +1,142 @@
+package Queries
+
+import (
+	"fmt"
+	"ldapper/Globals"
+	"strings"
+
+	"github.com/go-ldap/ldap/v3"
+)
+
+func NestedGroupQuery(groupInput string, baseDN string, conn *ldap.Conn) []string {
+
+	var queryResult []string
+
+	query := fmt.Sprintf("(&(objectClass=group)(cn=%s))", groupInput) // Build the query
+	searchReq := Globals.LdapSearch(baseDN, query)                    // Search the baseDN
+	result, err := conn.Search(searchReq)                             // Execute the search
+	if err != nil {
+		fmt.Printf("Query error, %s", err)
+	}
+
+	// if LdapSearch returns information
+	if len(result.Entries) > 0 {
+		for _, cn := range result.Entries[0].GetAttributeValues("member") {
+			s := strings.Split(cn, ",")                               // split at every comma
+			cn := strings.Replace(s[0], "CN=", "", -1)                // remove all CN= from string
+			cn = strings.Replace(cn, "(", ldap.EscapeFilter("("), -1) //Escape parenthesis
+			cn = strings.Replace(cn, ")", ldap.EscapeFilter(")"), -1)
+
+			query = fmt.Sprintf("(cn=%s)", cn)              // build the query
+			searchReq2 := Globals.LdapSearch(baseDN, query) // search for username
+
+			result2, err := conn.Search(searchReq2) // get results
+			if err != nil {
+				fmt.Printf("Query error, %s", err)
+			}
+
+			if len(result2.Entries[0].GetAttributeValues("sAMAccountName")) > 0 {
+				samAccountName := result2.Entries[0].GetAttributeValues("sAMAccountName")[0] // get sAMAccountName
+				username := strings.Replace(samAccountName, "sAMAccountNAme: ", "", -1)      // remove all sAMAccountName: from string
+
+				//Check if group
+				objectClass := result2.Entries[0].GetAttributeValues("objectClass")
+				isGroup := false
+
+				for i := 0; i < len(objectClass); i++ {
+					if result2.Entries[0].GetAttributeValues("objectClass")[i] == "group" {
+						isGroup = true
+					}
+				}
+				if isGroup {
+					username = fmt.Sprintf("%s (Group)", username)
+				}
+
+				//Append Result Array
+				queryResult = append(queryResult, username)
+			}
+		}
+	}
+
+	return queryResult
+} // end NetGroupQuery
+
+func NetNestedGroupQuery(groupInput string, baseDN string, conn *ldap.Conn) []string {
+
+	var queryResult []string
+
+	nestedQuery := fmt.Sprintf("(memberof:1.2.840.113556.1.4.1941:=CN=%s,OU=Groups,%s)", groupInput, baseDN)
+	searchReq := Globals.LdapSearch(baseDN, nestedQuery) // Search the baseDN
+	result, err := conn.Search(searchReq)                // Execute the search
+	if err != nil {
+		fmt.Printf("Query error, %s", err)
+	}
+
+	// if LdapSearch returns information
+	if len(result.Entries) > 0 {
+		for i := 1; i < len(result.Entries); i++ {
+			queryResult = append(queryResult, result.Entries[i].GetAttributeValues("sAMAccountName")[0])
+		}
+	}
+
+	//For each result, check if group
+	for i := 0; i < len(queryResult); i++ {
+		query := fmt.Sprintf("(sAMAccountName=%s)", queryResult[i]) // build the query
+		searchReq3 := Globals.LdapSearch(baseDN, query)
+
+		result3, err := conn.Search(searchReq3) // get results
+		if err != nil {
+			fmt.Printf("Query error, %s", err)
+		}
+
+		objectClass := result3.Entries[0].GetAttributeValues("objectClass")
+		isGroup := false
+
+		for i := 0; i < len(objectClass); i++ {
+			if result3.Entries[0].GetAttributeValues("objectClass")[i] == "group" {
+				isGroup = true
+			}
+		}
+		//If result is a group, append (Group) to result
+		if isGroup {
+			queryResult[i] = fmt.Sprintf("%s (Group)", queryResult[i])
+		}
+
+	}
+
+	return queryResult
+} // end NetNestedGroupQuery
+
+func ReturnNestedGroupQuery(groupInput string, baseDN string, conn *ldap.Conn) (queryResult string) {
+	var nestedGroupMembers []string = NetNestedGroupQuery(groupInput, baseDN, conn) // Get nested group members
+	var primaryGroupMembers []string = NetGroupQuery(groupInput, baseDN, conn)      // Get primary group members
+
+	if len(primaryGroupMembers) > 0 {
+		queryResult += ("\nPrimary Group Members\n-------------------------------------------------------------------------------\n")
+		for i, username := range primaryGroupMembers {
+			queryResult += fmt.Sprintf("%-25s", username)
+			i++
+			if i%3 == 0 {
+				queryResult += ("\n") // new line every 3 entries
+			}
+		}
+
+		differenceReturn := Globals.GetArrayDifference(nestedGroupMembers, primaryGroupMembers)
+		if len(differenceReturn) > 0 {
+			queryResult += ("\n\nNested Group Members\n-------------------------------------------------------------------------------\n")
+			for i, username := range differenceReturn {
+				queryResult += fmt.Sprintf("%-25s", username)
+				i++
+				if i%3 == 0 {
+					queryResult += ("\n") // new line every 3 entries
+				}
+			}
+		}
+
+	} else {
+		fmt.Printf("No results for \"%s\", check query.", groupInput)
+		queryResult = ("")
+	}
+
+	return
+} // end ReturnGroupQuery
