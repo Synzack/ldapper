@@ -1,15 +1,3 @@
-//TODO Fix help commands when using commands, outdated output returned to user (ex. net netGroup a)
-//Done - Line 298
-
-/*
-> net netGroup a
-Invalid search. Please use:
-        net group <group>
-        net user <user>
-
-
-*/
-
 package main
 
 import (
