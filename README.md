@@ -19,6 +19,7 @@ This tool should be considered in its beta stages. Please report any bugs, issue
 
 - [Ldapper](#ldapper)
   - [Table of Contents](#table-of-contents)
+  - [Installation](#installation)
   - [Help](#help)
 - [LDAPS Support](#ldaps-support)
 - [Authentication](#authentication)
@@ -32,6 +33,17 @@ This tool should be considered in its beta stages. Please report any bugs, issue
   - [Add SPN](#add-spn)
 - [Logging](#logging)
 - [Proxy Support](#proxy-support)
+
+## Installation
+
+Ldapper can be built and ran using the following commands inside of the repository folder:
+
+```
+go mod init ldapper     - initialize the Go project
+go mod tidy             - pull down all necessary dependencies
+go build                - build Ldapper
+./ldapper               - run Ldapper
+```
 
 ## Help
 
