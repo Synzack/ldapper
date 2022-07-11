@@ -1,0 +1,13 @@
+# ignore any file without an extension
+*
+!/**/
+!*.*
+
+# ignore any vscode or GoLang generated file
+go.*
+.vscode/
+
+# ignore random MacOs and text/log files
+.DS_Store
+*.txt
+*.log

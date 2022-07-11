@@ -4,10 +4,9 @@
 
 # Ldapper
 
-A GoLang tool to enumerate and abuse LDAP. Made *simple*.
+A GoLang tool to enumerate and abuse LDAP. Made _simple_.
 
-Ldapper was created with for use in offensive security engagements for **_targeted_** user enumeration, group enumeration, and more. Ldapper uses familiar "net" commands such as "net user" and "net group" to perform all its queries and its output follows the same conventions. The Ldapper user interface operates as a pseudo-interactive shell, where the user can input commands until exited. All traffic goes over the LDAP(S) protocol with a singular bind to help you better blend into the network. 
-
+Ldapper was created with for use in offensive security engagements for **_targeted_** user enumeration, group enumeration, and more. Ldapper uses familiar "net" commands such as "net user" and "net group" to perform all its queries and its output follows the same conventions. Ldapper's user interface operates as a pseudo-interactive shell, where the user can input commands until exited. All traffic goes over the LDAP(S) protocol with a singular bind to help you better blend into the network.
 
 Ldapper is proxy aware and supports NTLM authentication with a user's hash. Additionally, this tool can perform modification actions within LDAP. More functionality is planned for later releases, but for now additional supported command functions are:
 
@@ -17,6 +16,7 @@ Ldapper is proxy aware and supports NTLM authentication with a user's hash. Addi
 This tool should be considered in its beta stages. Please report any bugs, issues, or functionality ideas for future releases.
 
 ## Table of Contents
+
 - [Ldapper](#ldapper)
   - [Table of Contents](#table-of-contents)
   - [Help](#help)
@@ -109,7 +109,7 @@ The net module follows the same structure as the traditional Windows net module.
 - `net group <group>`
 - `net nestedGroups <group>`
 
-The command `net user` will information on a specified user in the domain, minus group memberships (see "[Groups](#groups)" module). The command `net group` will return a list of users that are members of the specified group. The `net nestedGroups` query acts similarly to the "net group" query, but searches recursively for all nested users and groups. 
+The command `net user` will information on a specified user in the domain, minus group memberships (see "[Groups](#groups)" module). The command `net group` will return a list of users that are members of the specified group. The `net nestedGroups` query acts similarly to the "net group" query, but searches recursively for all nested users and groups.
 
 <sub>\*Note that the output in the "group" queries will return the "(Group)" label to distinguish users and groups. This is not part of the group name. Additionally, any groups with spaces in them will be wrapped in single quotes.</sub>
 
@@ -158,17 +158,21 @@ NORMAND_MULLINS          DORIS_PICKETT            NEWTON_HALL
 DEMETRIUS_BRENNAN        MADELINE_SINGLETON       SHERRY_RIVAS
 ```
 
-## Groups 
+<sub>\* Note: nested group queries will likely result in an [expensive LDAP query](http://directoryadmin.blogspot.com/2019/10/hunting-bad-ldap-queries-on-your-dc.html), these are LDAP searches that visit a large number of entries. The default threshold for an expensive search is 10,000 entries.</sub>
+
+## Groups
+
 The `groups` module pulls the group memberships for an individual user. The syntax is as follows:
-* `groups <targetUser>`
-  
+
+- `groups <targetUser>`
+
 ```
 > groups hanzo
 
 Group Memberships - hanzo:
 -------------------------------------------------------------------------------
-GA-gor-distlist1              BE-1415ACUAT-distlist1        TestGroup2                    
-TestGroup  
+GA-gor-distlist1              BE-1415ACUAT-distlist1        TestGroup2
+TestGroup
 ```
 
 # Command Modules
@@ -226,4 +230,3 @@ Bind successful, dropping into shell.
 
 >
 ```
-
