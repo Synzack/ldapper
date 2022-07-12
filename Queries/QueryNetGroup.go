@@ -9,9 +9,10 @@ import (
 	"github.com/go-ldap/ldap/v3"
 )
 
-func NetGroupQuery(groupInput string, baseDN string, conn *ldap.Conn) []string {
+func NetGroupQuery(groupInput string, baseDN string, conn *ldap.Conn) ([]string, string) {
 
 	var queryResult []string
+	var description string
 
 	query := fmt.Sprintf("(&(objectClass=group)(cn=%s))", groupInput) // Build the query
 	searchReq := Globals.LdapSearch(baseDN, query)                    // Search the baseDN
@@ -22,6 +23,10 @@ func NetGroupQuery(groupInput string, baseDN string, conn *ldap.Conn) []string {
 
 	// if LdapSearch returns information
 	if len(result.Entries) > 0 {
+		if len(result.Entries[0].GetAttributeValues("description")) > 0 {
+			description = result.Entries[0].GetAttributeValues("description")[0]
+		}
+
 		for _, dn := range result.Entries[0].GetAttributeValues("member") {
 			regexCN := regexp.MustCompile(`CN=(.*?),[A-Z]{2}=`)
 			match := regexCN.FindAllStringSubmatch(dn, -1)
@@ -62,11 +67,12 @@ func NetGroupQuery(groupInput string, baseDN string, conn *ldap.Conn) []string {
 		}
 	}
 
-	return queryResult
+	return queryResult, description
 } // end NetGroupQuery
 
 func ReturnGroupQuery(groupInput string, baseDN string, conn *ldap.Conn) (queryResult string) {
-	var primaryGroupMembers []string = NetGroupQuery(groupInput, baseDN, conn) // Get primary group members
+	primaryGroupMembers, description := NetGroupQuery(groupInput, baseDN, conn) // Get primary group members
+	queryResult += fmt.Sprintf("Comment: %s\n", description)
 
 	if len(primaryGroupMembers) > 0 {
 		queryResult += ("\nPrimary Group Members\n-------------------------------------------------------------------------------\n")
