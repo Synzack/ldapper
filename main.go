@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"strings"
+        "text/tabwriter"
 
 	"github.com/go-ldap/ldap/v3"
 	"h12.io/socks"
@@ -338,6 +339,19 @@ func main() {
 						}
 					}
 				}
+                        case "getspns":
+                            result := Queries.GetUserSPNs(baseDN, conn)
+                            //i tabwriter to format SPN output table 
+                            w := new(tabwriter.Writer) 
+                            w.Init(os.Stdout, 0, 8, 0, '\t', 0)
+                            fmt.Fprintln(w, result)
+
+                            if opt.logFile != "" {
+                                if result != "" {
+                                    Globals.LogToFile(opt.logFile, result)
+                                }
+                            }
+                            w.Flush()
 			default:
 				fmt.Println("Invalid command. Use command, \"help\" for available options.")
 			} // end 'module' switch
