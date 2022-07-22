@@ -352,6 +352,20 @@ func main() {
                                 }
                             }
                             w.Flush()
+
+
+
+                        case "roast":
+                            if len(userInput) == 1 {
+                                    fmt.Println("Incorrect number of arguments. Usage: roast user")
+                                    break
+                            }
+                            roastuser := userInput[1]
+
+                            result := Commands.RequestSPN(roastuser, baseDN, conn)
+                            fmt.Println(result)
+
+
 			default:
 				fmt.Println("Invalid command. Use command, \"help\" for available options.")
 			} // end 'module' switch
