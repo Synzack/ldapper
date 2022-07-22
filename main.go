@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+        "io"
+        "time"
 	"crypto/tls"
 	"flag"
 	"fmt"
@@ -342,16 +344,32 @@ func main() {
                         case "getspns":
                             result := Queries.GetUserSPNs(baseDN, conn)
                             //i tabwriter to format SPN output table 
-                            w := new(tabwriter.Writer) 
-                            w.Init(os.Stdout, 0, 8, 0, '\t', 0)
-                            fmt.Fprintln(w, result)
+                            // TODO: the writing of output can probably be refactored where it doesnt need to be called depending on each case
+                            spnWriter := new(tabwriter.Writer) 
+
+                            spnOutput := fmt.Sprintf("spns-%s.txt", time.Now().Format("01-02-2006-03-04-05"))  
+                            f, err := os.Create(spnOutput)
+                            if err != nil {
+                                log.Fatal(err)
+                            }
+
+                            // write to stdout and SPN Output File
+                            multiOut := io.MultiWriter(f, os.Stdout)
+                            spnWriter.Init(multiOut, 0, 8, 0, '\t', 0)
+                            fmt.Fprintln(spnWriter, result)
+
+                            // close writer and file
+                            spnWriter.Flush()
+                            f.Close()
+
+                            spnLog := fmt.Sprintf("Ouput written to %s\n", spnOutput) 
+                            fmt.Println(spnLog) 
 
                             if opt.logFile != "" {
                                 if result != "" {
-                                    Globals.LogToFile(opt.logFile, result)
+                                    Globals.LogToFile(opt.logFile, spnLog)
                                 }
                             }
-                            w.Flush()
 			default:
 				fmt.Println("Invalid command. Use command, \"help\" for available options.")
 			} // end 'module' switch
