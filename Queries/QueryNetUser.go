@@ -15,41 +15,29 @@ import (
 	"514":   "Account Locked",
 }*/
 
-var userAccountControlMap = map[string]string{
-	"1":        "SCRIPT",
-	"2":        "ACCOUNTDISABLE",
-	"8":        "HOMEDIR_REQUIRED",
-	"16":       "LOCKOUT",
-	"32":       "PASSWD_NOTREQD",
-	"64":       "PASSWD_CANT_CHANGE",
-	"128":      "ENCRYPTED_TEXT_PWD_ALLOWED",
-	"256":      "TEMP_DUPLICATE_ACCOUNT",
-	"512":      "NORMAL_ACCOUNT",
-	"514":      "Disabled Account",
-	"544":      "Enabled, Password Not Required",
-	"546":      "Disabled, Password Not Required",
-	"2048":     "INTERDOMAIN_TRUST_ACCOUNT",
-	"4096":     "WORKSTATION_TRUST_ACCOUNT",
-	"8192":     "SERVER_TRUST_ACCOUNT",
-	"65536":    "DONT_EXPIRE_PASSWORD",
-	"66048":    "Enabled, Password Doesn't Expire",
-	"66050":    "Disabled, Password Doesn't Expire",
-	"66082":    "Disabled, Password Doesn't Expire & Not Required",
-	"131072":   "MNS_LOGON_ACCOUNT",
-	"262144":   "SMARTCARD_REQUIRED",
-	"262656":   "Enabled, Smartcard Required",
-	"262658":   "Disabled, Smartcard Required",
-	"262690":   "Disabled, Smartcard Required, Password Not Required",
-	"328194":   "Disabled, Smartcard Required, Password Doesn't Expire",
-	"328226":   "Disabled, Smartcard Required, Password Doesn't Expire & Not Required",
-	"524288":   "TRUSTED_FOR_DELEGATION",
-	"532480":   "Domain controller",
-	"1048576":  "NOT_DELEGATED",
-	"2097152":  "USE_DES_KEY_ONLY",
-	"4194304":  "DONT_REQ_PREAUTH",
-	"8388608":  "PASSWORD_EXPIRED",
-	"16777216": "TRUSTED_TO_AUTH_FOR_DELEGATION",
-	"67108864": "PARTIAL_SECRETS_ACCOUNT",
+var userAccountControlMap = map[int]string{
+    0x00000002: "USER_ACCOUNT_DISABLED",
+    0x00000008: "USER_HOME_DIRECTORY_REQUIRED",
+    0x00000020: "USER_PASSWORD_NOT_REQUIRED",
+    0x00000100: "USER_TEMP_DUPLICATE_ACCOUNT",
+    0x00000200: "USER_NORMAL_ACCOUNT",
+    0x00020000: "USER_MNS_LOGON_ACCOUNT",
+    0x00000800: "USER_INTERDOMAIN_TRUST_ACCOUNT",
+    0x00001000: "USER_WORKSTATION_TRUST_ACCOUNT",
+    0x00002000: "USER_SERVER_TRUST_ACCOUNT",
+    0x00010000: "USER_DONT_EXPIRE_PASSWORD",
+    0x00000010: "USER_ACCOUNT_AUTO_LOCKED",
+    0x00000080: "USER_ENCRYPTED_TEXT_PASSWORD_ALLOWED",
+    0x00040000: "USER_SMARTCARD_REQUIRED",
+    0x00080000: "USER_TRUSTED_FOR_DELEGATION",
+    0x00100000: "USER_NOT_DELEGATED",
+    0x00008000: "USER_USE_DES_KEY_ONLY",
+    0x00200000: "USER_DONT_REQUIRE_PREAUTH",
+    0x00800000: "USER_PASSWORD_EXPIRED",
+    0x01000000: "USER_TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION",
+    0x02000000: "USER_NO_AUTH_DATA_REQUIRED",
+    0x04000000: "USER_PARTIAL_SECRETS_ACCOUNT",
+    0x08000000: "USER_USE_AES_KEYS",
 }
 
 func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryResult string) {
@@ -105,8 +93,22 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 
 			}
 
-			userAccountControl := userAccountControlResult.Entries[0].GetAttributeValues("userAccountControl")[0] // Get userAccountControl
-			queryResult += fmt.Sprintf("User Account Control: \t%s\n\t\t\t(If Enabled, Check Last Lockout Time)\n\n", userAccountControlMap[userAccountControl])
+                        // Get userAccountControl and convert to int for bitwise operations
+                        userAccountControl, err := strconv.Atoi(userAccountControlResult.Entries[0].GetAttributeValues("userAccountControl")[0])
+                        if err != nil {
+                                fmt.Printf("User Account Control conversion error, %s", err)
+
+                        }
+
+                        // Get all the user account attributes 
+                        queryResult += fmt.Sprintf("User Account Control: ")
+                        for code, _ := range userAccountControlMap{
+                            if (code & userAccountControl) > 0 {
+                                queryResult += fmt.Sprintf("\t%s\n\t\t", userAccountControlMap[code])
+                            }
+                            
+                        }
+                        queryResult += fmt.Sprintf("\t(If Enabled, Check Last Lockout Time)\n")
 
 			if len(userAccountControlResult.Entries[0].GetAttributeValues("lockoutTime")) > 0 {
 				lockoutTime := userAccountControlResult.Entries[0].GetAttributeValues("lockoutTime")[0]
