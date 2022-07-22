@@ -209,6 +209,7 @@ func main() {
 					"\tgroups <user>\n" +
 					"\tnet group <group>\n" +
 					"\tnet nestedGroups <group> (OPSEC Warning: Expensive LDAP query)\n" +
+                                        "\tgetspns (Get All User SPNs)\n" +
 					"Commands:\n" +
 					"\taddComputer <computerName$>  (Requires LDAPS)\n" +
 					"\tspn <add/delete> <targetUser> <spn>\n" +
