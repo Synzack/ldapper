@@ -186,6 +186,21 @@ Group Memberships - hanzo:
 GA-gor-distlist1              BE-1415ACUAT-distlist1        TestGroup2
 TestGroup
 ```
+## GetUserSPNs
+
+The `getspns` module pulls all domain users with an SPN set. Syntax is as follows:
+
+- `getspns`
+
+```
+> getspns
+
+SPN                     Username                PasswordLastSet                 LastLogon                       Delegation
+CIFS/AZRWAPPS1000002    LIDIA_ELLIOTT           2022-07-24 21:07:52 -0400 EDT   2022-07-24 21:08:17 -0400 EDT   unconstrained
+CIFS/AZRWLPT1000000     HOUSTON_MCBRIDE         2022-07-24 21:05:43 -0400 EDT   2022-07-24 21:06:15 -0400 EDT   constrained
+CIFS/ESMWLPT1000000     DOLLY_MCLEAN            2022-07-15 00:38:54 -0400 EDT   <never>
+
+```
 
 # Command Modules
 
