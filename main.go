@@ -362,7 +362,7 @@ func main() {
                             }
                             roastuser := userInput[1]
 
-                            result := Commands.RequestSPN(roastuser, baseDN, conn)
+                            result := Commands.RequestSPN(roastuser, baseDN, conn, opt.username, opt.password, opt.ntlm, opt.domain, opt.dc)
                             fmt.Println(result)
 
 
