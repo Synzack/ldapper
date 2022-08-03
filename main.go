@@ -379,7 +379,6 @@ func main() {
                                 Globals.LogToFile(opt.logFile, spnLog)
 
                             }
-                            w.Flush()
 
                         case "roast":
                             if len(userInput) == 1 {
