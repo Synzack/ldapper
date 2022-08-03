@@ -11,7 +11,7 @@ import (
 func GetUserSPNs(baseDN string, conn *ldap.Conn) (queryResult string) {
 	query := "(&(servicePrincipalName=*)(UserAccountControl:1.2.840.113556.1.4.803:=512)(!(UserAccountControl:1.2.840.113556.1.4.803:=2))(!(objectCategory=computer)))"
 	searchReq := Globals.LdapSearch(baseDN, query)
-	result, err := conn.Search(searchReq)
+	result, err := conn.SearchWithPaging(searchReq, 10)
 
 	if err != nil {
 		fmt.Printf("Query error, %s", err)
