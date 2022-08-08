@@ -186,6 +186,21 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 				queryResult += ("Mail: \n")
 			}
 
+			//Get SPNs
+			spnResults := userAccountControlResult.Entries[0].GetAttributeValues("servicePrincipalName")
+			if len(spnResults) > 0 {
+				queryResult += "SPN(s): "
+				for i := 0; i < len(spnResults); i++ {
+					if i == 0 {
+						queryResult += fmt.Sprintf("\t\t%s\n", spnResults[i])
+					} else {
+						queryResult += fmt.Sprintf("\t\t\t%s\n", spnResults[i])
+					}
+				}
+			} else {
+				queryResult += ("SPN(s): \n")
+			}
+
 		} else {
 			fmt.Println("Object class is of not of type \"user\".")
 		} // end if result.Entries[0].GetAttributeValues("objectClass")[0] == "user"
