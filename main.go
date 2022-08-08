@@ -250,7 +250,6 @@ func main() {
 				switch option {
 				case "group":
 					data := Queries.ReturnGroupQuery(arg, baseDN, conn)
-
 					Globals.OutputAndLog(opt.logFile, data, false)
 
 				case "user":
@@ -266,8 +265,6 @@ func main() {
 
 				case "nestedGroups":
 					data := Queries.ReturnNestedGroupQuery(arg, baseDN, conn)
-					fmt.Println(data)
-
 					Globals.OutputAndLog(opt.logFile, data, false)
 
 				default:
