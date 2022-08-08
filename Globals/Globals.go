@@ -45,18 +45,6 @@ func OutputAndLog(fileName string, data string, noStdOut bool) {
 	outputWriter.Flush()
 }
 
-func LogToFile(fileName string, data string) {
-	f, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
-	defer f.Close()
-	log.SetFlags(0)
-
-	log.SetOutput(f)
-	log.Println(data)
-}
-
 func ConvertLDAPTime(t int) time.Time {
 	LDAPtime := t
 	winSecs := LDAPtime / 10000000

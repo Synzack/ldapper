@@ -68,17 +68,17 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 			//get username
 			username := result.Entries[0].GetAttributeValues("sAMAccountName") // Get username
 			if len(username) > 0 {                                             // If username is not empty
-				queryResult += fmt.Sprintf("User Name: \t\t%s\n", username[0])
+				queryResult += fmt.Sprintf("User Name: \t%s\n", username[0])
 			}
 
 			//get Full Name
 			userCN := result.Entries[0].GetAttributeValues("cn")[0]
-			queryResult += fmt.Sprintf("Full Name: \t\t%s\n", userCN)
+			queryResult += fmt.Sprintf("Full Name: \t%s\n", userCN)
 
 			//get Comments
 			if len(result.Entries[0].GetAttributeValues("description")) > 0 { // If comments is not empty
 				description := result.Entries[0].GetAttributeValues("description")[0] // Get comments
-				queryResult += fmt.Sprintf("Comment: \t\t%s\n", description)          // Print comments
+				queryResult += fmt.Sprintf("Comment: \t%s\n", description)            // Print comments
 			} else {
 				queryResult += ("Comment: \n")
 			}
@@ -104,7 +104,7 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 			queryResult += fmt.Sprintf("User Account Control: ")
 			for code, _ := range userAccountControlMap {
 				if (code & userAccountControl) > 0 {
-					queryResult += fmt.Sprintf("\t%s\n\t\t", userAccountControlMap[code])
+					queryResult += fmt.Sprintf("\t%s\n", userAccountControlMap[code])
 				}
 
 			}
@@ -123,7 +123,6 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 				}
 			} else {
 				queryResult += ("Last Lockout Time: \n")
-				//fmt.Printf("Acount Enabled: \t%s\n", userAccountControlMap[userAccountControl])
 			}
 
 			// get user expiration date
@@ -172,7 +171,7 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 					if strings.Contains(humanTime, "12/31/1600") {
 						humanTime = "Never"
 					}
-					queryResult += fmt.Sprintf("Last logon: \t\t%s\n", humanTime)
+					queryResult += fmt.Sprintf("Last logon: \t%s\n", humanTime)
 				}
 			} else {
 				queryResult += ("Last logon: \n")
@@ -181,7 +180,7 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 			//Get Email Address
 			if len(userAccountControlResult.Entries[0].GetAttributeValues("mail")) > 0 {
 				email := result.Entries[0].GetAttributeValues("mail")[0]
-				queryResult += fmt.Sprintf("Mail: \t\t\t%s\n", email)
+				queryResult += fmt.Sprintf("Mail: \t%s\n", email)
 			} else {
 				queryResult += ("Mail: \n")
 			}
@@ -192,9 +191,9 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 				queryResult += "SPN(s): "
 				for i := 0; i < len(spnResults); i++ {
 					if i == 0 {
-						queryResult += fmt.Sprintf("\t\t%s\n", spnResults[i])
+						queryResult += fmt.Sprintf("\t%s\n", spnResults[i])
 					} else {
-						queryResult += fmt.Sprintf("\t\t\t%s\n", spnResults[i])
+						queryResult += fmt.Sprintf("\t%s\n", spnResults[i])
 					}
 				}
 			} else {

@@ -254,14 +254,7 @@ func main() {
 
 				case "user":
 					data := Queries.NetUserQuery(arg, baseDN, conn)
-					fmt.Println(data)
-
-					// if logfile flag is set, write to file
-					if opt.logFile != "" {
-						if data != "" {
-							Globals.LogToFile(opt.logFile, data)
-						}
-					}
+					Globals.OutputAndLog(opt.logFile, data, false)
 
 				case "nestedGroups":
 					data := Queries.ReturnNestedGroupQuery(arg, baseDN, conn)
