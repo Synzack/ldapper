@@ -2,11 +2,10 @@ package main
 
 import (
 	"bufio"
-        "io"
-        "time"
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"io"
 	"ldapper/Commands"
 	"ldapper/Globals"
 	"ldapper/Queries"
@@ -14,7 +13,8 @@ import (
 	"net"
 	"os"
 	"strings"
-        "text/tabwriter"
+	"text/tabwriter"
+	"time"
 
 	"github.com/go-ldap/ldap/v3"
 	"h12.io/socks"
@@ -209,7 +209,8 @@ func main() {
 					"\tgroups <user>\n" +
 					"\tnet group <group>\n" +
 					"\tnet nestedGroups <group> (OPSEC Warning: Expensive LDAP query)\n" +
-                                        "\tgetspns (Get All User SPNs)\n" +
+					"\tgetspns (Get All User SPNs)\n" +
+					"\tmquota (Get Machine Account Quota)\n" +
 					"Commands:\n" +
 					"\taddComputer <computerName$>  (Requires LDAPS)\n" +
 					"\tspn <add/delete> <targetUser> <spn>\n" +
@@ -342,43 +343,51 @@ func main() {
 						}
 					}
 				}
-                        case "getspns":
-                            var spnOutput string
-                            var f *os.File
-                            var multiOut io.Writer
+			case "getspns":
+				var spnOutput string
+				var f *os.File
+				var multiOut io.Writer
 
-                            result := Queries.GetUserSPNs(baseDN, conn)
-                            //i tabwriter to format SPN output table 
-                            // TODO: the writing of output can probably be refactored where it doesnt need to be called depending on each case
-                            spnWriter := new(tabwriter.Writer) 
+				result := Queries.GetUserSPNs(baseDN, conn)
+				//i tabwriter to format SPN output table
+				// TODO: the writing of output can probably be refactored where it doesnt need to be called depending on each case
+				spnWriter := new(tabwriter.Writer)
 
+				// write to stdout and SPN Output File
+				if opt.logFile != "" {
+					spnOutput = fmt.Sprintf("spns-%s.txt", time.Now().Format("01-02-2006-03-04-05"))
+					f, err = os.Create(spnOutput)
+					if err != nil {
+						log.Fatal(err)
+					}
 
-                            // write to stdout and SPN Output File
-                            if opt.logFile != "" {
-                                spnOutput = fmt.Sprintf("spns-%s.txt", time.Now().Format("01-02-2006-03-04-05"))  
-                                f, err = os.Create(spnOutput)
-                                if err != nil {
-                                    log.Fatal(err)
-                                }
+					multiOut = io.MultiWriter(f, os.Stdout)
+				} else {
+					multiOut = io.MultiWriter(os.Stdout)
+				}
+				spnWriter.Init(multiOut, 0, 8, 0, '\t', 0)
+				fmt.Fprintln(spnWriter, result)
 
-                                multiOut = io.MultiWriter(f, os.Stdout)
-                            }else {
-                                multiOut = io.MultiWriter(os.Stdout)
-                            }
-                            spnWriter.Init(multiOut, 0, 8, 0, '\t', 0)
-                            fmt.Fprintln(spnWriter, result)
+				// close writer and file
+				spnWriter.Flush()
+				f.Close()
 
-                            // close writer and file
-                            spnWriter.Flush()
-                            f.Close()
-                            
-                            if opt.logFile != "" && result != "" {
+				if opt.logFile != "" && result != "" {
 
-                                spnLog := fmt.Sprintf("Ouput written to %s\n", spnOutput) 
-                                fmt.Println(spnLog) 
-                                Globals.LogToFile(opt.logFile, spnLog)
+					spnLog := fmt.Sprintf("Ouput written to %s\n", spnOutput)
+					fmt.Println(spnLog)
+					Globals.LogToFile(opt.logFile, spnLog)
 
-                            }
+				}
+			case "mquota":
+				result := Queries.GetMachineQuota(baseDN, conn)
+				fmt.Println(result)
+
+				if opt.logFile != "" {
+					if result != "" {
+						Globals.LogToFile(opt.logFile, result)
+					}
+				}
 			default:
 				fmt.Println("Invalid command. Use command, \"help\" for available options.")
 			} // end 'module' switch
