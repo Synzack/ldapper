@@ -35,7 +35,7 @@ type FlagOptions struct {
 }
 
 func options() *FlagOptions {
-	username := flag.String("u", "", "Username \nIf using password auth: 'NetBIOSName\\user' (Must be in quotes or use \\\\)\nIf using NTLM auth: 'username'")
+	username := flag.String("u", "", "Username \nIf using password auth: 'NetBIOSName/user'\nIf using NTLM auth: 'username'")
 	password := flag.String("p", "", "Password")
 	ntlm := flag.String("H", "", "Use NTLM authentication")
 	domain := flag.String("d", "", "Domain. Only needed if using NTLM authentication.")
@@ -79,7 +79,7 @@ func main() {
 	if opt.username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "") || opt.help {
 		flag.Usage()
 		fmt.Println("Examples:")
-		fmt.Println("\tWith Password: \t./ldapper -u '<netbios>\\username' -p <password> -dc <ip/FQDN> -s")
+		fmt.Println("\tWith Password: \t./ldapper -u '<netbios>/username' -p <password> -dc <ip/FQDN> -s")
 		fmt.Println("\tWith Hash: \t./ldapper -u <username> -H <hash> -d <domain> -dc <ip/FQDN> -s")
 		fmt.Println("Tips:\n\tNetBIOS name can be found with 'nmblookup -A dc-ip' (Linux) or 'nbtstat /a dc-ip' (Windows)")
 		os.Exit(1)
@@ -153,6 +153,7 @@ func main() {
 	defer conn.Close() //Close connection when done
 
 	//Authenticated Bind
+	opt.username = strings.Replace(opt.username, "/", "\\", -1)
 	// if password option set
 	if opt.password != "" {
 		err = conn.Bind(opt.username, opt.password) //NetBios\user, password
