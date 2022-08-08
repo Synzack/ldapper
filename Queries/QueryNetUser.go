@@ -80,7 +80,7 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 				description := result.Entries[0].GetAttributeValues("description")[0] // Get comments
 				queryResult += fmt.Sprintf("Comment: \t%s\n", description)            // Print comments
 			} else {
-				queryResult += ("Comment: \n")
+				queryResult += ("Comment: \t\n")
 			}
 
 			//get Account Active
@@ -122,7 +122,7 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 					queryResult += fmt.Sprintf("Last Lockout Time: \t%s\n", humanTime)                 // Print human readable timestamp
 				}
 			} else {
-				queryResult += ("Last Lockout Time: \n")
+				queryResult += ("Last Lockout Time: \t\n")
 			}
 
 			// get user expiration date
@@ -156,7 +156,7 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 				homeDirectory := result.Entries[0].GetAttributeValues("homeDirectory")[0] // Get homeDirectory
 				queryResult += fmt.Sprintf("Home Directory: \t%s\n", homeDirectory)       // Print homeDirectory
 			} else {
-				queryResult += ("Home Directory: \n")
+				queryResult += ("Home Directory: \t\n")
 			}
 
 			// Get user last logon date
@@ -174,7 +174,7 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 					queryResult += fmt.Sprintf("Last logon: \t%s\n", humanTime)
 				}
 			} else {
-				queryResult += ("Last logon: \n")
+				queryResult += ("Last logon: \t\n")
 			}
 
 			//Get Email Address
@@ -182,7 +182,7 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 				email := result.Entries[0].GetAttributeValues("mail")[0]
 				queryResult += fmt.Sprintf("Mail: \t%s\n", email)
 			} else {
-				queryResult += ("Mail: \n")
+				queryResult += ("Mail: \t\n")
 			}
 
 			//Get SPNs
@@ -197,7 +197,7 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 					}
 				}
 			} else {
-				queryResult += ("SPN(s): \n")
+				queryResult += ("SPN(s): \t\n")
 			}
 
 		} else {

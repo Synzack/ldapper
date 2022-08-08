@@ -78,6 +78,7 @@ func ReturnNestedGroupQuery(groupInput string, baseDN string, conn *ldap.Conn) (
 					queryResult += ("\n") // new line every 3 entries
 				}
 			}
+			queryResult += ("\n")
 		}
 
 	} else {
