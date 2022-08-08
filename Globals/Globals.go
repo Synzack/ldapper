@@ -1,8 +1,11 @@
 package Globals
 
 import (
+	"fmt"
+	"io"
 	"log"
 	"os"
+	"text/tabwriter"
 	"time"
 
 	"github.com/go-ldap/ldap/v3"
@@ -16,6 +19,30 @@ func LdapSearch(baseDN string, query string) *ldap.SearchRequest {
 		[]string{},
 		nil,
 	)
+}
+
+func OutputAndLog(fileName string, data string, noStdOut bool) {
+	outputWriter := new(tabwriter.Writer)
+	var multiOut io.Writer
+	if fileName != "" {
+		f, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("error opening file: %v", err)
+		}
+		defer f.Close()
+		if noStdOut {
+			multiOut = io.MultiWriter(f)
+		} else {
+			multiOut = io.MultiWriter(f, os.Stdout)
+		}
+	} else {
+		multiOut = io.MultiWriter(os.Stdout)
+	}
+
+	outputWriter.Init(multiOut, 12, 8, 0, '\t', 0)
+	fmt.Fprintln(outputWriter, data)
+
+	outputWriter.Flush()
 }
 
 func LogToFile(fileName string, data string) {
