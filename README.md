@@ -140,6 +140,7 @@ Account Expires:        Never
 Password Last Set:      02/21/2021 03:33:12 PM
 Home Directory:         C:\Users\Home\Hanzo
 Last logon:             07/06/2022 03:40:39 PM
+Mail:                   hanzo@overwatch.local
 ```
 
 ```
