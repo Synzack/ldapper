@@ -210,6 +210,22 @@ This module queries for the machine account quota of the domain. Syntax is as fo
 > mquota
 Machine Account Quota: 10
 ```
+## Password Policy
+This module queries for the password policy for the domain. Syntax is as follows:
+
+- `passpol`
+```
+> passpol
+
+Minimum Password Length:        8
+Password History Length:        24
+Lockout Threshold:              5
+Lockout Duration:               30      minutes
+Minimum Password Age:           1       day(s)
+Maximum Password Age:           42      day(s)
+
+Password Complexity:            DOMAIN_PASSWORD_COMPLEX
+```
 
 # Command Modules
 
