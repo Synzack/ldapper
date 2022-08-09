@@ -28,7 +28,7 @@ func GroupsQuery(groupInput string, baseDN string, conn *ldap.Conn) (queryResult
 				cn = ("'" + cn + "' ")
 			}
 
-			queryResult += fmt.Sprintf("%-30s", cn)
+			queryResult += fmt.Sprintf("%s\t", cn)
 			i++
 			if i%3 == 0 {
 				queryResult += ("\n")

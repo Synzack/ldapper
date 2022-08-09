@@ -72,12 +72,13 @@ func ReturnNestedGroupQuery(groupInput string, baseDN string, conn *ldap.Conn) (
 		if len(differenceReturn) > 0 {
 			queryResult += ("\n\nNested Group Members\n-------------------------------------------------------------------------------\n")
 			for i, username := range differenceReturn {
-				queryResult += fmt.Sprintf("%-25s", username)
+				queryResult += fmt.Sprintf("%s\t", username)
 				i++
 				if i%3 == 0 {
 					queryResult += ("\n") // new line every 3 entries
 				}
 			}
+			queryResult += ("\n")
 		}
 
 	} else {
