@@ -21,7 +21,7 @@ import (
 )
 
 type FlagOptions struct {
-	username string
+	upn string
 	password string
 	ntlm     string
 	dc       string
@@ -34,7 +34,7 @@ type FlagOptions struct {
 }
 
 func options() *FlagOptions {
-	username := flag.String("u", "", "Username (username@domain)")
+	upn := flag.String("u", "", "Username (username@domain)")
 	password := flag.String("p", "", "Password")
 	ntlm := flag.String("H", "", "Use NTLM authentication")
 	dc := flag.String("dc", "", "IP address or FQDN of target DC")
@@ -47,7 +47,7 @@ func options() *FlagOptions {
 
 	flag.Parse()
 	return &FlagOptions{
-		username: *username,
+		upn: *upn,
 		password: *password,
 		ntlm:     *ntlm,
 		dc:       *dc,
@@ -76,23 +76,21 @@ func main() {
 	var proxyConn net.Conn
 	var err error
 	var domain string
+	var username string
         var target []string	
 
-	target = strings.Split(opt.username, "@")
+	target = strings.Split(opt.upn, "@")
 
 	// Did the user supply the username correctly <user@domain>?
 	if len(target) == 1 {
 	    opt.help = true	
 	}else {
+	    username = target[0]
 	    domain = target[1]
-	    // only include username for ntlm auth
-	    if opt.ntlm != "" {
-                opt.username = target[0]
-	    }
 	}
 	
 	// if required flags aren't set, print help
-	if opt.username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "") || opt.help {
+	if username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "") || opt.help {
 		flag.Usage()
 		fmt.Println("Examples:")
 		fmt.Println("\tWith Password: \t./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s")
@@ -165,7 +163,7 @@ func main() {
 
 	// if password option set
 	if opt.password != "" {
-		err = conn.Bind(opt.username, opt.password) 
+		err = conn.Bind(opt.upn, opt.password) 
 		if err != nil {
 			log.Fatal(err)
 		} else {
@@ -175,7 +173,7 @@ func main() {
 
 	// if ntlm hash option set
 	if opt.ntlm != "" {
-		err = conn.NTLMBindWithHash(domain, opt.username, opt.ntlm) 
+		err = conn.NTLMBindWithHash(domain, username, opt.ntlm) 
 		if err != nil {
 			fmt.Print("test\n")
 			log.Fatal(err)
