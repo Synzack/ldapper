@@ -391,8 +391,6 @@ func main() {
                             result := Commands.RequestSPN(roastuser, baseDN, conn, opt.username, opt.password, opt.ntlm, opt.domain, opt.dc)
                             fmt.Println(result)
 
-
-				}
 			case "mquota":
 				result := Queries.GetMachineQuota(baseDN, conn)
 				fmt.Println(result)
