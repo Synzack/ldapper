@@ -194,7 +194,7 @@ func main() {
 		}
 
 		if opt.logFile != "" {
-			Globals.OutputAndLog(opt.logFile, "> "+userQuery, true)
+			Globals.OutputAndLog(opt.logFile, "> "+userQuery, 0, 0, 0, true)
 		}
 
 		if userQuery != "exit" {
@@ -212,6 +212,7 @@ func main() {
 					"\tnet nestedGroups <group> (OPSEC Warning: Expensive LDAP query)\n" +
 					"\tgetspns (Get All User SPNs)\n" +
 					"\tmquota (Get Machine Account Quota)\n" +
+					"\tpasspol (Get Domain Password Policy)\n" +
 					"Commands:\n" +
 					"\taddComputer <computerName$>  (Requires LDAPS)\n" +
 					"\tspn <add/delete> <targetUser> <spn>\n" +
@@ -227,7 +228,7 @@ func main() {
 				arguments := userInput[1]
 
 				data := Queries.GroupsQuery(arguments, baseDN, conn)
-				Globals.OutputAndLog(opt.logFile, data, false)
+				Globals.OutputAndLog(opt.logFile, data, 12, 8, 4, false)
 
 			case "net":
 				if len(userInput) == 1 {
@@ -250,15 +251,15 @@ func main() {
 				switch option {
 				case "group":
 					data := Queries.ReturnGroupQuery(arg, baseDN, conn)
-					Globals.OutputAndLog(opt.logFile, data, false)
+					Globals.OutputAndLog(opt.logFile, data, 12, 8, 4, false)
 
 				case "user":
 					data := Queries.NetUserQuery(arg, baseDN, conn)
-					Globals.OutputAndLog(opt.logFile, data, false)
+					Globals.OutputAndLog(opt.logFile, data, 0, 8, 0, false)
 
 				case "nestedGroups":
 					data := Queries.ReturnNestedGroupQuery(arg, baseDN, conn)
-					Globals.OutputAndLog(opt.logFile, data, false)
+					Globals.OutputAndLog(opt.logFile, data, 12, 8, 4, false)
 
 				default:
 					fmt.Println("Invalid search. Please use:")
@@ -279,7 +280,7 @@ func main() {
 				}
 
 				result := Commands.AddComputerAccount(arguments, baseDN, conn)
-				Globals.OutputAndLog(opt.logFile, result, false)
+				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
 
 			case "spn":
 				if len(userInput) == 1 {
@@ -298,11 +299,11 @@ func main() {
 				switch option {
 				case "add":
 					result := Commands.AddSPN(targetUser, spn, baseDN, conn)
-					Globals.OutputAndLog(opt.logFile, result, false)
+					Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
 
 				case "delete":
 					result := Commands.DeleteSPN(targetUser, spn, baseDN, conn)
-					Globals.OutputAndLog(opt.logFile, result, false)
+					Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
 				}
 			case "getspns":
 				var spnOutput string
@@ -337,11 +338,15 @@ func main() {
 					spnLog = fmt.Sprintf("Output written to %s\n", spnOutput)
 				}
 
-				Globals.OutputAndLog(opt.logFile, spnLog, false)
+				Globals.OutputAndLog(opt.logFile, spnLog, 0, 0, 0, false)
 
 			case "mquota":
 				result := Queries.GetMachineQuota(baseDN, conn)
-				Globals.OutputAndLog(opt.logFile, result, false)
+				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
+
+			case "passpol":
+				result := Queries.GetPwdPolicy(baseDN, conn)
+				Globals.OutputAndLog(opt.logFile, result, 0, 8, 0, false)
 
 			default:
 				fmt.Println("Invalid command. Use command, \"help\" for available options.")

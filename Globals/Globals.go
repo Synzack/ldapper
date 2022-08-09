@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"os"
+	"strconv"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -21,7 +24,7 @@ func LdapSearch(baseDN string, query string) *ldap.SearchRequest {
 	)
 }
 
-func OutputAndLog(fileName string, data string, noStdOut bool) {
+func OutputAndLog(fileName string, data string, minWidth int, tabWidth int, padding int, noStdOut bool) {
 	outputWriter := new(tabwriter.Writer)
 	var multiOut io.Writer
 	if fileName != "" {
@@ -39,7 +42,7 @@ func OutputAndLog(fileName string, data string, noStdOut bool) {
 		multiOut = io.MultiWriter(os.Stdout)
 	}
 
-	outputWriter.Init(multiOut, 12, 8, 4, '\t', 0)
+	outputWriter.Init(multiOut, minWidth, tabWidth, padding, '\t', 0)
 	fmt.Fprintln(outputWriter, data)
 
 	outputWriter.Flush()
@@ -50,6 +53,18 @@ func ConvertLDAPTime(t int) time.Time {
 	winSecs := LDAPtime / 10000000
 	timeStamp := winSecs - 11644473600
 	return time.Unix(int64(timeStamp), 0)
+}
+
+func ConvertToMinutes(t string) (minutes float64) {
+	removeMinus := strings.Trim(t, "-")
+	first5 := removeMinus[:5]
+	trailing := removeMinus[5:]
+	number, _ := strconv.ParseFloat(first5, 64)
+	decimal := float64(number / 10000)
+	seconds := (decimal * (math.Pow(10, float64(len(trailing))) / 1000))
+	minutes = seconds / 60
+
+	return
 }
 
 func GetBaseDN(dc string, conn *ldap.Conn) string {
