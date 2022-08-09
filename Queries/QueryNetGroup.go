@@ -77,7 +77,7 @@ func ReturnGroupQuery(groupInput string, baseDN string, conn *ldap.Conn) (queryR
 	if len(primaryGroupMembers) > 0 {
 		queryResult += ("\nPrimary Group Members\n-------------------------------------------------------------------------------\n")
 		for i, username := range primaryGroupMembers {
-			queryResult += fmt.Sprintf("%-25s", username)
+			queryResult += fmt.Sprintf("%s\t", username)
 			i++
 			if i%3 == 0 {
 				queryResult += ("\n") // new line every 3 entries
