@@ -21,10 +21,9 @@ import (
 )
 
 type FlagOptions struct {
-	username string
+	upn string
 	password string
 	ntlm     string
-	domain   string
 	dc       string
 	scheme   bool
 	logFile  string
@@ -35,10 +34,9 @@ type FlagOptions struct {
 }
 
 func options() *FlagOptions {
-	username := flag.String("u", "", "Username \nIf using password auth: 'NetBIOSName/user'\nIf using NTLM auth: 'username'")
+	upn := flag.String("u", "", "Username (username@domain)")
 	password := flag.String("p", "", "Password")
 	ntlm := flag.String("H", "", "Use NTLM authentication")
-	domain := flag.String("d", "", "Domain. Only needed if using NTLM authentication.")
 	dc := flag.String("dc", "", "IP address or FQDN of target DC")
 	scheme := flag.Bool("s", false, "Bind using LDAPS")
 	logFile := flag.String("o", "", "Log file")
@@ -49,10 +47,9 @@ func options() *FlagOptions {
 
 	flag.Parse()
 	return &FlagOptions{
-		username: *username,
+		upn: *upn,
 		password: *password,
 		ntlm:     *ntlm,
-		domain:   *domain,
 		dc:       *dc,
 		scheme:   *scheme,
 		logFile:  *logFile,
@@ -75,19 +72,31 @@ func main() {
 
 	fmt.Print(header)
 
-	// if required flags aren't set, print help
-	if opt.username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "") || opt.help {
-		flag.Usage()
-		fmt.Println("Examples:")
-		fmt.Println("\tWith Password: \t./ldapper -u '<netbios>/username' -p <password> -dc <ip/FQDN> -s")
-		fmt.Println("\tWith Hash: \t./ldapper -u <username> -H <hash> -d <domain> -dc <ip/FQDN> -s")
-		fmt.Println("Tips:\n\tNetBIOS name can be found with 'nmblookup -A dc-ip' (Linux) or 'nbtstat /a dc-ip' (Windows)")
-		os.Exit(1)
-	}
-
 	var conn *ldap.Conn
 	var proxyConn net.Conn
 	var err error
+	var domain string
+	var username string
+        var target []string	
+
+	target = strings.Split(opt.upn, "@")
+
+	// Did the user supply the username correctly <user@domain>?
+	if len(target) == 1 {
+	    opt.help = true	
+	}else {
+	    username = target[0]
+	    domain = target[1]
+	}
+	
+	// if required flags aren't set, print help
+	if username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "") || opt.help {
+		flag.Usage()
+		fmt.Println("Examples:")
+		fmt.Println("\tWith Password: \t./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s")
+		fmt.Println("\tWith Hash: \t./ldapper -u <username@domain> -H <hash> -dc <ip/FQDN> -s")
+		os.Exit(1)
+	}
 
 	//Initialize connection with proxy if specified
 	if opt.socks4 != "" || opt.socks4a != "" || opt.socks5 != "" {
@@ -152,11 +161,9 @@ func main() {
 
 	defer conn.Close() //Close connection when done
 
-	//Authenticated Bind
-	opt.username = strings.Replace(opt.username, "/", "\\", -1)
 	// if password option set
 	if opt.password != "" {
-		err = conn.Bind(opt.username, opt.password) //NetBios\user, password
+		err = conn.Bind(opt.upn, opt.password) 
 		if err != nil {
 			log.Fatal(err)
 		} else {
@@ -166,13 +173,7 @@ func main() {
 
 	// if ntlm hash option set
 	if opt.ntlm != "" {
-		if opt.domain == "" {
-			log.Fatal("Domain must be set if using NTLM")
-		}
-		if strings.Contains(opt.username, "\\") {
-			log.Fatal("For NTLM, username must not contain '<netbios>\\'")
-		}
-		err = conn.NTLMBindWithHash(opt.domain, opt.username, opt.ntlm) //NetBios\user, ntlm hash
+		err = conn.NTLMBindWithHash(domain, username, opt.ntlm) 
 		if err != nil {
 			fmt.Print("test\n")
 			log.Fatal(err)
