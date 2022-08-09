@@ -175,7 +175,7 @@ func main() {
 
 	// if ntlm hash option set
 	if opt.ntlm != "" {
-		err = conn.NTLMBindWithHash(domain, opt.username, opt.ntlm) //NetBios\user, ntlm hash
+		err = conn.NTLMBindWithHash(domain, opt.username, opt.ntlm) 
 		if err != nil {
 			fmt.Print("test\n")
 			log.Fatal(err)
