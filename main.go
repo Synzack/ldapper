@@ -2,11 +2,10 @@ package main
 
 import (
 	"bufio"
-        "io"
-        "time"
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"io"
 	"ldapper/Commands"
 	"ldapper/Globals"
 	"ldapper/Queries"
@@ -14,7 +13,8 @@ import (
 	"net"
 	"os"
 	"strings"
-        "text/tabwriter"
+	"text/tabwriter"
+	"time"
 
 	"github.com/go-ldap/ldap/v3"
 	"h12.io/socks"
@@ -35,7 +35,7 @@ type FlagOptions struct {
 }
 
 func options() *FlagOptions {
-	username := flag.String("u", "", "Username \nIf using password auth: 'NetBIOSName\\user' (Must be in quotes or use \\\\)\nIf using NTLM auth: 'username'")
+	username := flag.String("u", "", "Username \nIf using password auth: 'NetBIOSName/user'\nIf using NTLM auth: 'username'")
 	password := flag.String("p", "", "Password")
 	ntlm := flag.String("H", "", "Use NTLM authentication")
 	domain := flag.String("d", "", "Domain. Only needed if using NTLM authentication.")
@@ -79,7 +79,7 @@ func main() {
 	if opt.username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "") || opt.help {
 		flag.Usage()
 		fmt.Println("Examples:")
-		fmt.Println("\tWith Password: \t./ldapper -u '<netbios>\\username' -p <password> -dc <ip/FQDN> -s")
+		fmt.Println("\tWith Password: \t./ldapper -u '<netbios>/username' -p <password> -dc <ip/FQDN> -s")
 		fmt.Println("\tWith Hash: \t./ldapper -u <username> -H <hash> -d <domain> -dc <ip/FQDN> -s")
 		fmt.Println("Tips:\n\tNetBIOS name can be found with 'nmblookup -A dc-ip' (Linux) or 'nbtstat /a dc-ip' (Windows)")
 		os.Exit(1)
@@ -153,6 +153,7 @@ func main() {
 	defer conn.Close() //Close connection when done
 
 	//Authenticated Bind
+	opt.username = strings.Replace(opt.username, "/", "\\", -1)
 	// if password option set
 	if opt.password != "" {
 		err = conn.Bind(opt.username, opt.password) //NetBios\user, password
@@ -209,7 +210,8 @@ func main() {
 					"\tgroups <user>\n" +
 					"\tnet group <group>\n" +
 					"\tnet nestedGroups <group> (OPSEC Warning: Expensive LDAP query)\n" +
-                                        "\tgetspns (Get All User SPNs)\n" +
+					"\tgetspns (Get All User SPNs)\n" +
+					"\tmquota (Get Machine Account Quota)\n" +
 					"Commands:\n" +
 					"\taddComputer <computerName$>  (Requires LDAPS)\n" +
 					"\tspn <add/delete> <targetUser> <spn>\n" +
@@ -342,41 +344,40 @@ func main() {
 						}
 					}
 				}
-                        case "getspns":
-                            var spnOutput string
-                            var f *os.File
-                            var multiOut io.Writer
+			case "getspns":
+				var spnOutput string
+				var f *os.File
+				var multiOut io.Writer
 
-                            result := Queries.GetUserSPNs(baseDN, conn)
-                            //i tabwriter to format SPN output table 
-                            // TODO: the writing of output can probably be refactored where it doesnt need to be called depending on each case
-                            spnWriter := new(tabwriter.Writer) 
+				result := Queries.GetUserSPNs(baseDN, conn)
+				//i tabwriter to format SPN output table
+				// TODO: the writing of output can probably be refactored where it doesnt need to be called depending on each case
+				spnWriter := new(tabwriter.Writer)
 
+				// write to stdout and SPN Output File
+				if opt.logFile != "" {
+					spnOutput = fmt.Sprintf("spns-%s.txt", time.Now().Format("01-02-2006-03-04-05"))
+					f, err = os.Create(spnOutput)
+					if err != nil {
+						log.Fatal(err)
+					}
 
-                            // write to stdout and SPN Output File
-                            if opt.logFile != "" {
-                                spnOutput = fmt.Sprintf("spns-%s.txt", time.Now().Format("01-02-2006-03-04-05"))  
-                                f, err = os.Create(spnOutput)
-                                if err != nil {
-                                    log.Fatal(err)
-                                }
+					multiOut = io.MultiWriter(f, os.Stdout)
+				} else {
+					multiOut = io.MultiWriter(os.Stdout)
+				}
+				spnWriter.Init(multiOut, 0, 8, 0, '\t', 0)
+				fmt.Fprintln(spnWriter, result)
 
-                                multiOut = io.MultiWriter(f, os.Stdout)
-                            }else {
-                                multiOut = io.MultiWriter(os.Stdout)
-                            }
-                            spnWriter.Init(multiOut, 0, 8, 0, '\t', 0)
-                            fmt.Fprintln(spnWriter, result)
+				// close writer and file
+				spnWriter.Flush()
+				f.Close()
 
-                            // close writer and file
-                            spnWriter.Flush()
-                            f.Close()
-                            
-                            if opt.logFile != "" && result != "" {
+				if opt.logFile != "" && result != "" {
 
-                                spnLog := fmt.Sprintf("Ouput written to %s\n", spnOutput) 
-                                fmt.Println(spnLog) 
-                                Globals.LogToFile(opt.logFile, spnLog)
+					spnLog := fmt.Sprintf("Ouput written to %s\n", spnOutput)
+					fmt.Println(spnLog)
+					Globals.LogToFile(opt.logFile, spnLog)
 
                             }
 
@@ -391,6 +392,16 @@ func main() {
                             fmt.Println(result)
 
 
+				}
+			case "mquota":
+				result := Queries.GetMachineQuota(baseDN, conn)
+				fmt.Println(result)
+
+				if opt.logFile != "" {
+					if result != "" {
+						Globals.LogToFile(opt.logFile, result)
+					}
+				}
 			default:
 				fmt.Println("Invalid command. Use command, \"help\" for available options.")
 			} // end 'module' switch

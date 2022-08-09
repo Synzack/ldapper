@@ -10,7 +10,7 @@ import (
 	"golang.org/x/text/encoding/unicode"
 )
 
-func AddComputerAccount(username string, baseDN string, conn *ldap.Conn) string {
+func AddComputerAccount(username string, baseDN string, conn *ldap.Conn) (queryResult string) {
 	password, err := random.String(15)
 	if err != nil {
 		fmt.Println(err)
@@ -47,8 +47,7 @@ func AddComputerAccount(username string, baseDN string, conn *ldap.Conn) string 
 
 	//send request
 	if err := conn.Add(addReq); err != nil {
-		log.Fatal("Error Adding service: ", err)
-		return ""
+		return fmt.Sprintf("Error Adding Service: %s", err)
 	}
 
 	return fmt.Sprintf("Successfully created computer account \"%s\" with password \"%s\"\n", username, password)

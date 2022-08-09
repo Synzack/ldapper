@@ -77,10 +77,10 @@ Usage of ./ldapper:
     	SOCKS5 Proxy Address (ip:port)
   -u string
     	Username
-    	If using password auth: 'NetBIOSName\user' (Must be in quotes or use \\)
+    	If using password auth: 'NetBIOSName/user'
     	If using NTLM auth: 'username'
 Examples:
-	With Password: 	./ldapper -u '<netbios>\username' -p <password> -dc <ip/FQDN> -s
+	With Password: 	./ldapper -u '<netbios>/username' -p <password> -dc <ip/FQDN> -s
 	With Hash: 	./ldapper -u <username> -H <hash> -d <domain> -dc <ip/FQDN> -s
 Tips:
 	NetBIOS name can be found with 'nmblookup -A dc-ip' (Linux) or 'nbtstat /a dc-ip' (Windows)
@@ -94,18 +94,17 @@ Ldapper supports the ability to bind to LDAP using either unencrypted LDAP on po
 
 ## Password
 
-Ldapper can be used with a username and password. This is the most common method of authentication. The username format must follow one of the below coventions:
+Ldapper can be used with a username and password. This is the most common method of authentication. The username format follows the below coventions:
 
-- 'NetBIOSName\username' (in single quotes)
-- NetBIOSName\\\\username (double backslash)
+- NetBIOSName/username
 
 ```
-> ./ldapper -u 'overwatch\hanzo' -P "Password123!" -dc 10.10.10.101 -s
+> ./ldapper -u overwatch/hanzo -P "Password123!" -dc 10.10.10.101 -s
 ```
 
 ## NTLM
 
-Ldapper can also authenticate with a user's NTLM hash. This method can be used with the `-H` flag. When using this authentication method, the username is input alone and the domain (-d) argument must be specified.
+Ldapper can also authenticate with a user's NTLM hash. This method can be used with the `-H` flag. When using this authentication method, the username is input alone (no NetBIOS included) and the domain (-d) argument must be specified.
 
 ```
 > ./ldapper -u hanzo -H OOGNKVJB2TRCYLD26H4DVPF3KBP0SG03 -dc 10.10.10.101 -d overwatch.local -s
@@ -141,6 +140,7 @@ Account Expires:        Never
 Password Last Set:      02/21/2021 03:33:12 PM
 Home Directory:         C:\Users\Home\Hanzo
 Last logon:             07/06/2022 03:40:39 PM
+Mail:                   hanzo@overwatch.local
 ```
 
 ```
@@ -201,6 +201,15 @@ CIFS/AZRWLPT1000000     HOUSTON_MCBRIDE         2022-07-24 21:05:43 -0400 EDT   
 CIFS/ESMWLPT1000000     DOLLY_MCLEAN            2022-07-15 00:38:54 -0400 EDT   <never>
 
 ```
+## Machine Account Quota
+This module queries for the machine account quota of the domain. Syntax is as follows:
+
+- `mquota`
+
+```
+> mquota
+Machine Account Quota: 10
+```
 
 # Command Modules
 
@@ -235,7 +244,7 @@ Successfully deleted SPN: "blah/blah" for user "hanzo"
 Currently, Ldapper supports logging of stdout to a specified log file. This can be called using the `-o` flag. The log file will be created in the current directory. If the log file already exists, it will be appended to.
 
 ```
-./ldapper -u 'overwatch\hanzo' -P "Password123!" -dc 10.10.10.101 -s -o ldapper.log
+./ldapper -u overwatch/hanzo -P "Password123!" -dc 10.10.10.101 -s -o ldapper.log
 ```
 
 # Proxy Support
