@@ -91,9 +91,7 @@ Ldapper supports the ability to bind to LDAP using either unencrypted LDAP on po
 
 ## Password
 
-Ldapper can be used with a username and password. This is the most common method of authentication. The username format follows the below coventions:
-
-- NetBIOSName/username
+Ldapper can be used with a username and password. This is the most common method of authentication. The username format follows the below covention:
 
 ```
 > ./ldapper -u 'hanzo@overwatch.local' -P "Password123!" -dc 10.10.10.101 -s
