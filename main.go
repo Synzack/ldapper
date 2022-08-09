@@ -337,13 +337,6 @@ func main() {
 				spnWriter.Flush()
 				f.Close()
 
-				if opt.logFile != "" && result != "" {
-
-					spnLog := fmt.Sprintf("Ouput written to %s\n", spnOutput)
-					fmt.Println(spnLog)
-					Globals.LogToFile(opt.logFile, spnLog)
-
-                            }
 				if opt.logFile != "" {
 					spnLog = fmt.Sprintf("Output written to %s\n", spnOutput)
 				}
