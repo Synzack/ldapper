@@ -39,7 +39,7 @@ func OutputAndLog(fileName string, data string, noStdOut bool) {
 		multiOut = io.MultiWriter(os.Stdout)
 	}
 
-	outputWriter.Init(multiOut, 12, 8, 0, '\t', 0)
+	outputWriter.Init(multiOut, 12, 8, 4, '\t', 0)
 	fmt.Fprintln(outputWriter, data)
 
 	outputWriter.Flush()
