@@ -21,10 +21,9 @@ import (
 )
 
 type FlagOptions struct {
-	username string
+	upn string
 	password string
 	ntlm     string
-	domain   string
 	dc       string
 	scheme   bool
 	logFile  string
@@ -35,10 +34,9 @@ type FlagOptions struct {
 }
 
 func options() *FlagOptions {
-	username := flag.String("u", "", "Username \nIf using password auth: 'NetBIOSName/user'\nIf using NTLM auth: 'username'")
+	upn := flag.String("u", "", "Username (username@domain)")
 	password := flag.String("p", "", "Password")
 	ntlm := flag.String("H", "", "Use NTLM authentication")
-	domain := flag.String("d", "", "Domain. Only needed if using NTLM authentication.")
 	dc := flag.String("dc", "", "IP address or FQDN of target DC")
 	scheme := flag.Bool("s", false, "Bind using LDAPS")
 	logFile := flag.String("o", "", "Log file")
@@ -49,10 +47,9 @@ func options() *FlagOptions {
 
 	flag.Parse()
 	return &FlagOptions{
-		username: *username,
+		upn: *upn,
 		password: *password,
 		ntlm:     *ntlm,
-		domain:   *domain,
 		dc:       *dc,
 		scheme:   *scheme,
 		logFile:  *logFile,
@@ -75,19 +72,31 @@ func main() {
 
 	fmt.Print(header)
 
-	// if required flags aren't set, print help
-	if opt.username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "") || opt.help {
-		flag.Usage()
-		fmt.Println("Examples:")
-		fmt.Println("\tWith Password: \t./ldapper -u '<netbios>/username' -p <password> -dc <ip/FQDN> -s")
-		fmt.Println("\tWith Hash: \t./ldapper -u <username> -H <hash> -d <domain> -dc <ip/FQDN> -s")
-		fmt.Println("Tips:\n\tNetBIOS name can be found with 'nmblookup -A dc-ip' (Linux) or 'nbtstat /a dc-ip' (Windows)")
-		os.Exit(1)
-	}
-
 	var conn *ldap.Conn
 	var proxyConn net.Conn
 	var err error
+	var domain string
+	var username string
+        var target []string	
+
+	target = strings.Split(opt.upn, "@")
+
+	// Did the user supply the username correctly <user@domain>?
+	if len(target) == 1 {
+	    opt.help = true	
+	}else {
+	    username = target[0]
+	    domain = target[1]
+	}
+	
+	// if required flags aren't set, print help
+	if username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "") || opt.help {
+		flag.Usage()
+		fmt.Println("Examples:")
+		fmt.Println("\tWith Password: \t./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s")
+		fmt.Println("\tWith Hash: \t./ldapper -u <username@domain> -H <hash> -dc <ip/FQDN> -s")
+		os.Exit(1)
+	}
 
 	//Initialize connection with proxy if specified
 	if opt.socks4 != "" || opt.socks4a != "" || opt.socks5 != "" {
@@ -152,11 +161,9 @@ func main() {
 
 	defer conn.Close() //Close connection when done
 
-	//Authenticated Bind
-	opt.username = strings.Replace(opt.username, "/", "\\", -1)
 	// if password option set
 	if opt.password != "" {
-		err = conn.Bind(opt.username, opt.password) //NetBios\user, password
+		err = conn.Bind(opt.upn, opt.password) 
 		if err != nil {
 			log.Fatal(err)
 		} else {
@@ -166,13 +173,7 @@ func main() {
 
 	// if ntlm hash option set
 	if opt.ntlm != "" {
-		if opt.domain == "" {
-			log.Fatal("Domain must be set if using NTLM")
-		}
-		if strings.Contains(opt.username, "\\") {
-			log.Fatal("For NTLM, username must not contain '<netbios>\\'")
-		}
-		err = conn.NTLMBindWithHash(opt.domain, opt.username, opt.ntlm) //NetBios\user, ntlm hash
+		err = conn.NTLMBindWithHash(domain, username, opt.ntlm) 
 		if err != nil {
 			fmt.Print("test\n")
 			log.Fatal(err)
@@ -194,7 +195,7 @@ func main() {
 		}
 
 		if opt.logFile != "" {
-			Globals.LogToFile(opt.logFile, "> "+userQuery)
+			Globals.OutputAndLog(opt.logFile, "> "+userQuery, 0, 0, 0, true)
 		}
 
 		if userQuery != "exit" {
@@ -212,6 +213,7 @@ func main() {
 					"\tnet nestedGroups <group> (OPSEC Warning: Expensive LDAP query)\n" +
 					"\tgetspns (Get All User SPNs)\n" +
 					"\tmquota (Get Machine Account Quota)\n" +
+					"\tpasspol (Get Domain Password Policy)\n" +
 					"Commands:\n" +
 					"\taddComputer <computerName$>  (Requires LDAPS)\n" +
 					"\tspn <add/delete> <targetUser> <spn>\n" +
@@ -219,6 +221,7 @@ func main() {
 					"\texit"
 				fmt.Println(help)
 			case "groups":
+
 				if len(userInput) == 1 {
 					fmt.Println("Incorrect number of arguments. Usage: groups <argument>")
 					break
@@ -226,14 +229,7 @@ func main() {
 				arguments := userInput[1]
 
 				data := Queries.GroupsQuery(arguments, baseDN, conn)
-				fmt.Println(data)
-
-				// if logfile flag is set, write to file
-				if opt.logFile != "" {
-					if data != "" {
-						Globals.LogToFile(opt.logFile, data)
-					}
-				}
+				Globals.OutputAndLog(opt.logFile, data, 12, 8, 4, false)
 
 			case "net":
 				if len(userInput) == 1 {
@@ -256,36 +252,16 @@ func main() {
 				switch option {
 				case "group":
 					data := Queries.ReturnGroupQuery(arg, baseDN, conn)
-					fmt.Println(data)
-
-					// if logfile flag is set, write to file
-					if opt.logFile != "" {
-						if data != "" {
-							Globals.LogToFile(opt.logFile, data)
-						}
-					}
+					Globals.OutputAndLog(opt.logFile, data, 12, 8, 4, false)
 
 				case "user":
 					data := Queries.NetUserQuery(arg, baseDN, conn)
-					fmt.Println(data)
-
-					// if logfile flag is set, write to file
-					if opt.logFile != "" {
-						if data != "" {
-							Globals.LogToFile(opt.logFile, data)
-						}
-					}
+					Globals.OutputAndLog(opt.logFile, data, 0, 8, 0, false)
 
 				case "nestedGroups":
 					data := Queries.ReturnNestedGroupQuery(arg, baseDN, conn)
-					fmt.Println(data)
+					Globals.OutputAndLog(opt.logFile, data, 12, 8, 4, false)
 
-					// if logfile flag is set, write to file
-					if opt.logFile != "" {
-						if data != "" {
-							Globals.LogToFile(opt.logFile, data)
-						}
-					}
 				default:
 					fmt.Println("Invalid search. Please use:")
 					fmt.Println("\tnet group <group>")
@@ -305,13 +281,8 @@ func main() {
 				}
 
 				result := Commands.AddComputerAccount(arguments, baseDN, conn)
-				fmt.Println(result)
+				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
 
-				if opt.logFile != "" {
-					if result != "" {
-						Globals.LogToFile(opt.logFile, result)
-					}
-				}
 			case "spn":
 				if len(userInput) == 1 {
 					fmt.Println("Incorrect number of arguments. Usage: spn <add/delete> <targetUser> <spn>")
@@ -329,29 +300,20 @@ func main() {
 				switch option {
 				case "add":
 					result := Commands.AddSPN(targetUser, spn, baseDN, conn)
-					fmt.Println(result)
-					if opt.logFile != "" {
-						if result != "" {
-							Globals.LogToFile(opt.logFile, result)
-						}
-					}
+					Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
+
 				case "delete":
 					result := Commands.DeleteSPN(targetUser, spn, baseDN, conn)
-					fmt.Println(result)
-					if opt.logFile != "" {
-						if result != "" {
-							Globals.LogToFile(opt.logFile, result)
-						}
-					}
+					Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
 				}
 			case "getspns":
 				var spnOutput string
+				var spnLog string
 				var f *os.File
 				var multiOut io.Writer
 
 				result := Queries.GetUserSPNs(baseDN, conn)
 				//i tabwriter to format SPN output table
-				// TODO: the writing of output can probably be refactored where it doesnt need to be called depending on each case
 				spnWriter := new(tabwriter.Writer)
 
 				// write to stdout and SPN Output File
@@ -373,13 +335,11 @@ func main() {
 				spnWriter.Flush()
 				f.Close()
 
-				if opt.logFile != "" && result != "" {
+				if opt.logFile != "" {
+					spnLog = fmt.Sprintf("Output written to %s\n", spnOutput)
+				}
 
-					spnLog := fmt.Sprintf("Ouput written to %s\n", spnOutput)
-					fmt.Println(spnLog)
-					Globals.LogToFile(opt.logFile, spnLog)
-
-                            }
+				Globals.OutputAndLog(opt.logFile, spnLog, 0, 0, 0, false)
 
                         case "roast":
                             if len(userInput) == 1 {
@@ -388,18 +348,17 @@ func main() {
                             }
                             roastuser := userInput[1]
 
-                            result := Commands.RequestSPN(roastuser, baseDN, conn, opt.username, opt.password, opt.ntlm, opt.domain, opt.dc)
+                            result := Commands.RequestSPN(roastuser, baseDN, conn, username, opt.password, opt.ntlm, domain, opt.dc)
                             fmt.Println(result)
 
 			case "mquota":
 				result := Queries.GetMachineQuota(baseDN, conn)
-				fmt.Println(result)
+				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
 
-				if opt.logFile != "" {
-					if result != "" {
-						Globals.LogToFile(opt.logFile, result)
-					}
-				}
+			case "passpol":
+				result := Queries.GetPwdPolicy(baseDN, conn)
+				Globals.OutputAndLog(opt.logFile, result, 0, 8, 0, false)
+
 			default:
 				fmt.Println("Invalid command. Use command, \"help\" for available options.")
 			} // end 'module' switch

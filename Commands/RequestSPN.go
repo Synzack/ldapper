@@ -51,8 +51,6 @@ func RequestSPN(targetUser string, baseDN string, conn *ldap.Conn, username stri
     }
     
     if password != ""{
-        // If the password is provided we do not want the NETBIOS name
-        username = strings.Split(username, "\\")[1]
         cl = client.NewWithPassword(username, domain, password, c, client.DisablePAFXFAST(true), client.AssumePreAuthentication(false))
     }else if ntlm != ""{
         cl = client.NewWithHash(username, domain, ntlm, c, client.DisablePAFXFAST(true), client.AssumePreAuthentication(false))

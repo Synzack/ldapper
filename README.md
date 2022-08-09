@@ -28,6 +28,9 @@ This tool should be considered in its beta stages. Please report any bugs, issue
 - [Query Modules](#query-modules)
   - [Net](#net)
   - [Groups](#groups)
+  - [GetUserSPNs](#getuserspns)
+  - [Machine Account Quota](#machine-account-quota)
+  - [Password Policy](#password-policy)
 - [Command Modules](#command-modules)
   - [Add Computer](#add-computer)
   - [Add SPN](#add-spn)
@@ -59,8 +62,6 @@ go build                - build Ldapper
 Usage of ./ldapper:
   -H string
     	Use NTLM authentication
-  -d string
-    	Domain. Only needed if using NTLM authentication.
   -dc string
     	IP address or FQDN of target DC
   -h	Display help menu
@@ -76,14 +77,10 @@ Usage of ./ldapper:
   -socks5 string
     	SOCKS5 Proxy Address (ip:port)
   -u string
-    	Username
-    	If using password auth: 'NetBIOSName/user'
-    	If using NTLM auth: 'username'
+    	Username (username@domain)
 Examples:
-	With Password: 	./ldapper -u '<netbios>/username' -p <password> -dc <ip/FQDN> -s
-	With Hash: 	./ldapper -u <username> -H <hash> -d <domain> -dc <ip/FQDN> -s
-Tips:
-	NetBIOS name can be found with 'nmblookup -A dc-ip' (Linux) or 'nbtstat /a dc-ip' (Windows)
+	With Password: 	./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s
+	With Hash: 	./ldapper -u <username@domain> -H <hash> -d <domain> -dc <ip/FQDN> -s
 ```
 
 # LDAPS Support
@@ -99,15 +96,15 @@ Ldapper can be used with a username and password. This is the most common method
 - NetBIOSName/username
 
 ```
-> ./ldapper -u overwatch/hanzo -P "Password123!" -dc 10.10.10.101 -s
+> ./ldapper -u 'hanzo@overwatch.local' -P "Password123!" -dc 10.10.10.101 -s
 ```
 
 ## NTLM
 
-Ldapper can also authenticate with a user's NTLM hash. This method can be used with the `-H` flag. When using this authentication method, the username is input alone (no NetBIOS included) and the domain (-d) argument must be specified.
+Ldapper can also authenticate with a user's NTLM hash. This method can be used with the `-H` flag. 
 
 ```
-> ./ldapper -u hanzo -H OOGNKVJB2TRCYLD26H4DVPF3KBP0SG03 -dc 10.10.10.101 -d overwatch.local -s
+> ./ldapper -u 'hanzo@overwatch.local' -H OOGNKVJB2TRCYLD26H4DVPF3KBP0SG03 -dc 10.10.10.101 -s
 ```
 
 # Query Modules
@@ -210,6 +207,22 @@ This module queries for the machine account quota of the domain. Syntax is as fo
 > mquota
 Machine Account Quota: 10
 ```
+## Password Policy
+This module queries for the password policy for the domain. Syntax is as follows:
+
+- `passpol`
+```
+> passpol
+
+Minimum Password Length:        8
+Password History Length:        24
+Lockout Threshold:              5
+Lockout Duration:               30      minutes
+Minimum Password Age:           1       day(s)
+Maximum Password Age:           42      day(s)
+
+Password Complexity:            DOMAIN_PASSWORD_COMPLEX
+```
 
 # Command Modules
 
@@ -244,7 +257,7 @@ Successfully deleted SPN: "blah/blah" for user "hanzo"
 Currently, Ldapper supports logging of stdout to a specified log file. This can be called using the `-o` flag. The log file will be created in the current directory. If the log file already exists, it will be appended to.
 
 ```
-./ldapper -u overwatch/hanzo -P "Password123!" -dc 10.10.10.101 -s -o ldapper.log
+./ldapper -u hanzo@overwatch.local -P "Password123!" -dc 10.10.10.101 -s -o ldapper.log
 ```
 
 # Proxy Support
