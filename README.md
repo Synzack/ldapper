@@ -80,7 +80,7 @@ Usage of ./ldapper:
     	Username (username@domain)
 Examples:
 	With Password: 	./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s
-	With Hash: 	./ldapper -u <username@domain> -H <hash> -d <domain> -dc <ip/FQDN> -s
+	With Hash: 	./ldapper -u <username@domain> -H <hash> -dc <ip/FQDN> -s
 ```
 
 # LDAPS Support
