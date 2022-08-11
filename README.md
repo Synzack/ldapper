@@ -80,7 +80,7 @@ Usage of ./ldapper:
     	Username (username@domain)
 Examples:
 	With Password: 	./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s
-	With Hash: 	./ldapper -u <username@domain> -H <hash> -d <domain> -dc <ip/FQDN> -s
+	With Hash: 	./ldapper -u <username@domain> -H <hash> -dc <ip/FQDN> -s
 ```
 
 # LDAPS Support
@@ -91,9 +91,7 @@ Ldapper supports the ability to bind to LDAP using either unencrypted LDAP on po
 
 ## Password
 
-Ldapper can be used with a username and password. This is the most common method of authentication. The username format follows the below coventions:
-
-- NetBIOSName/username
+Ldapper can be used with a username and password. This is the most common method of authentication. The username format follows the below covention:
 
 ```
 > ./ldapper -u 'hanzo@overwatch.local' -P "Password123!" -dc 10.10.10.101 -s
@@ -265,7 +263,7 @@ Currently, Ldapper supports logging of stdout to a specified log file. This can 
 Ldapper supports all SOCKS4, SOCKS4A, and SOCKS5 proxies. The proxy can be specified with the `-socks4`, `-socks4a`, and `-socks5` flags respectively. Proxy functionality is compatible with C2 frameworks such as Cobalt Strike.
 
 ```
-./ldapper -u hanzo -P "Password123!" -dc 10.10.10.101 -socks4 127.0.0.1:6666 -s
+./ldapper -u hanzo@overwatch.local -P "Password123!" -dc 10.10.10.101 -socks4 127.0.0.1:6666 -s
  __    ____   __   ____  ____  ____  ____
 (  )  (    \ / _\ (  _ \(  _ \(  __)(  _ \
 / (_/\ ) D (/    \ ) __/ ) __/ ) _)  )   /
