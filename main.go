@@ -78,6 +78,8 @@ func main() {
 	var domain string
 	var username string
         var target []string	
+	var socksType int
+	var socksAddress string
 
 	target = strings.Split(opt.upn, "@")
 
@@ -107,8 +109,6 @@ func main() {
 			port = "389"
 		}
 
-		var socksType int
-		var socksAddress string
 		if opt.socks4 != "" {
 			//set socks to socks4
 			socksType = socks.SOCKS4
@@ -348,7 +348,7 @@ func main() {
                             }
                             roastuser := userInput[1]
 
-                            result := Commands.RequestSPN(roastuser, baseDN, conn, username, opt.password, opt.ntlm, domain, opt.dc)
+                            result := Commands.RequestSPN(roastuser, username, opt.password, opt.ntlm, domain, opt.dc, socksAddress, socksType)
                             fmt.Println(result)
 
 			case "mquota":

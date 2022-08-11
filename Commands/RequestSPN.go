@@ -4,7 +4,6 @@ import (
 	"fmt"
         "strings"
         "encoding/hex"
-	"github.com/go-ldap/ldap/v3"
         "github.com/jcmturner/gokrb5/v8/config"
         "github.com/jcmturner/gokrb5/v8/client"
         "github.com/jcmturner/gokrb5/v8/iana/etypeID"
@@ -37,9 +36,12 @@ default_domain = %s
     }`
 )
 
-func RequestSPN(targetUser string, baseDN string, conn *ldap.Conn, username string, password string, ntlm string, domain string, dc string) (spnResult string) {
+func RequestSPN(targetUser string, username string, password string, ntlm string, domain string, dc string, socksServer string, socksType int) (spnResult string) {
     
     var cl *client.Client
+    var ticket string
+
+    // Need domain in uppercase for GOKRB5 Config
     domain = strings.ToUpper(domain)
 
     l := log.New(os.Stderr, "GOKRB5 Client: ", log.Ldate|log.Ltime|log.Lshortfile)
@@ -50,10 +52,18 @@ func RequestSPN(targetUser string, baseDN string, conn *ldap.Conn, username stri
         l.Fatalf("Error Loading Config: %v\n", err)
     }
     
+    // Create a Kerberos client with either password or hash
     if password != ""{
         cl = client.NewWithPassword(username, domain, password, c, client.DisablePAFXFAST(true), client.AssumePreAuthentication(false))
     }else if ntlm != ""{
         cl = client.NewWithHash(username, domain, ntlm, c, client.DisablePAFXFAST(true), client.AssumePreAuthentication(false))
+    }
+
+    // Add socks info to client config if enabled
+    if socksServer != "" {
+        cl.Config.Socks.Enabled = true
+        cl.Config.Socks.Version = socksType
+        cl.Config.Socks.Server = socksServer
     }
 
     err = cl.Login()
@@ -64,7 +74,6 @@ func RequestSPN(targetUser string, baseDN string, conn *ldap.Conn, username stri
     tgt, _, err := cl.GetServiceTicket(targetUser)
     
     // only printing out RC4 encrypted tickets currently 
-    ticket := ""
     if err != nil {
         l.Printf("Error getting service ticket: %v\n", err)
     }else if tgt.EncPart.EType == etypeID.RC4_HMAC {
@@ -80,4 +89,3 @@ func RequestSPN(targetUser string, baseDN string, conn *ldap.Conn, username stri
     }
    return ticket
 }
-
