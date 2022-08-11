@@ -349,8 +349,7 @@ func main() {
                             roastuser := userInput[1]
 
                             result := Commands.RequestSPN(roastuser, username, opt.password, opt.ntlm, domain, opt.dc, socksAddress, socksType)
-                            fmt.Println(result)
-
+			    Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
 			case "mquota":
 				result := Queries.GetMachineQuota(baseDN, conn)
 				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
