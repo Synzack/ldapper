@@ -4,7 +4,7 @@
 !*.*
 
 # ignore any vscode or GoLang generated file
-go.*
+go.sum
 .vscode/
 
 # ignore random MacOs and text/log files
