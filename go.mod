@@ -1,5 +1,7 @@
 module ldapper
 
+go 1.19
+
 require (
 	github.com/go-ldap/ldap/v3 v3.4.4
 	github.com/jcmturner/gokrb5/v8 v8.4.3

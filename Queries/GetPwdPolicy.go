@@ -25,6 +25,7 @@ func GetPwdPolicy(baseDN string, conn *ldap.Conn) (queryResult string) {
 			minPwdAge := result.Entries[domainDNSResult].GetAttributeValue("minPwdAge")
 			lockoutThreshold := result.Entries[domainDNSResult].GetAttributeValue("lockoutThreshold")
 			lockoutDuration := result.Entries[domainDNSResult].GetAttributeValue("lockoutDuration")
+			lockOutObservationWindow := result.Entries[domainDNSResult].GetAttributeValue("lockOutObservationWindow")
 			pwdProperties := result.Entries[domainDNSResult].GetAttributeValue("pwdProperties")
 			pwdPropertiesResolved := getPwdProperties(pwdProperties)
 			//https://ldapwiki.com/wiki/PwdProperties#:~:text=PwdProperties%20attribute%20specifies%20an%20unsigned,Account%20Policies%5CPassword%20Policy%20folder.
@@ -33,7 +34,12 @@ func GetPwdPolicy(baseDN string, conn *ldap.Conn) (queryResult string) {
 			queryResult += fmt.Sprintf("Password History Length: \t%s\n", pwdHistoryLength)
 			queryResult += fmt.Sprintf("Lockout Threshold: \t%s\n", lockoutThreshold)
 			queryResult += fmt.Sprintf("Lockout Duration: \t%.0f\tminutes\n", Globals.ConvertToMinutes(lockoutDuration))
-			queryResult += fmt.Sprintf("Minimum Password Age: \t%.0f\tday(s)\n", Globals.ConvertToMinutes(minPwdAge)/60/24)
+			queryResult += fmt.Sprintf("Reset Account Lockout Counter: \t%.0f\tminutes\n", Globals.ConvertToMinutes(lockOutObservationWindow))
+			if minPwdAge == "0" {
+				queryResult += "Minimum Password Age: \tNone\n"
+			} else {
+				queryResult += fmt.Sprintf("Minimum Password Age: \t%.0f\tday(s)\n", Globals.ConvertToMinutes(minPwdAge)/60/24)
+			}
 			queryResult += fmt.Sprintf("Maximum Password Age: \t%.0f\tday(s)\n", Globals.ConvertToMinutes(maxPwdAge)/60/24)
 			queryResult += fmt.Sprintf("\t\nPassword Complexity: \t%s", pwdPropertiesResolved)
 		}
