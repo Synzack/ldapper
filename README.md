@@ -12,6 +12,7 @@ Ldapper is proxy aware and supports NTLM authentication with a user's hash. Addi
 
 - Add Domain Computers
 - Add/Remove Arbitrary SPNs
+- Kerberoast
 
 This tool should be considered in its beta stages. Please report any bugs, issues, or functionality ideas for future releases.
 
@@ -34,6 +35,7 @@ This tool should be considered in its beta stages. Please report any bugs, issue
 - [Command Modules](#command-modules)
   - [Add Computer](#add-computer)
   - [Add SPN](#add-spn)
+  - [Kerberoast](#kerberoast)
 - [Logging](#logging)
 - [Proxy Support](#proxy-support)
 
@@ -42,7 +44,6 @@ This tool should be considered in its beta stages. Please report any bugs, issue
 Ldapper can be built and ran using the following commands inside of the repository folder:
 
 ```
-go mod init ldapper     - initialize the Go project
 go mod tidy             - pull down all necessary dependencies
 go build                - build Ldapper
 ./ldapper               - run Ldapper
@@ -196,6 +197,7 @@ CIFS/AZRWLPT1000000     HOUSTON_MCBRIDE         2022-07-24 21:05:43 -0400 EDT   
 CIFS/ESMWLPT1000000     DOLLY_MCLEAN            2022-07-15 00:38:54 -0400 EDT   <never>
 
 ```
+
 ## Machine Account Quota
 This module queries for the machine account quota of the domain. Syntax is as follows:
 
@@ -248,6 +250,18 @@ Successfully added SPN: "blah/blah" for user "hanzo"
 ```
 > spn delete hanzo blah/blah
 Successfully deleted SPN: "blah/blah" for user "hanzo"
+```
+## Kerberoast
+
+The `roast` module will request and print the service ticket encrypted with the users password. Syntax is as follow:
+
+- `roast <user>`
+
+```
+> roast LIDIA_ELLIOT
+
+$krb5tgs$23$*LIDIA_ELLIOT$RANGE.COM$LIDIA_ELLIOT*$31d99685e614b96bb9fab3a534f3a68d$8cfae8a06c390b037bc6c1e4200de88e2d4320b189c8e58dbfb3579b96db0b6afc6645c082d3067e9ba07259cc23f3b02e8c28e02cb90ae29edeedb91c7f02e7a7700d82dc0a0a69081357e37d0db75a224d5f6b4ac61f1bad707eac16c83dae44e0d85e941e90205d7d38f374cd6796b9733bc9e2d27a8588312cb08b0323c40a221b2204eb4eb1af75111ce8b75aa5ebb0b765e1a28f6103a54f2e72b8b6cebb73c0997cc2de4285f462e5d91d608ef628fee624e490e17441bb5b8d9a96e1680d92f151aa12296c3e4370b1ce6a1209b56b7ca1ee52022442db642595db9474c76169e2be5fd4d2e5af13caa61958e8466ac2c021a9ea61ca1857c4463ccfdd65eec6eef3f06c12178703d467e76246f3b6ae5f3248e93d4e58b8ce320a1f25e0bfa683ac014c047105d5030f2d1caea9243bd0ded2009ae6e79122e38e49a81747a93f98ba2557671d48da09fa6475e3d4373dee80f705a482aded93abeab77b337c47d904292dc0f08c89fcb009dd09e101a8a71c3060d9ebc2620b331454e971d51fa9fdab9b8b7f42cb606ac0ca6a85852912ba91266c9e1fcaf33b6cef49fccd490526509955dc5bf6744c9787271819e86f8cb18a999a85c37503d837b10a434ab1ae717f82fc139ba60989b70934a3a6eb62a2ad7dc3af7b70e120b45233059c4606227adc11a86be8cd688b7a2984a782c723f4fb018e6e068e3667a697c6bb761f1cc90cdee0ed51fd2904c89766105976e1ef2d33714f31dbd71ae2a56d674d9998196c160b8847236e77997ebff66d6bf8605c59d04949e1e16b6f60429db005f83bd8719a6e952dc56166d681053a7b7e1461cc3d6b408a21ee6cbe907adacc7650df0e5188d4e1279516f934e97e295e6501dfb20462e0d59edf42a391f7dbf39dcc791bc97c7d77bf66146df570cfccdd92694581232a823ba0174045f4b37343ceb888641c5ccf3f6e10e35957d07974f39fd7b0c5018eb5707f4556b1f73a47c0e081ecdca708d5da866cdaf8ca7131ff0fd9a6a58db6073918368bdc8b2635e3ee2e016136e2cea53fd1f717dd0a86dfdc050f6e46bbd2913c3df5f98fd54784bcee5d74ad8728d8dd1758a5034a326b6b28a2fc1e159e3fe4c0311af57d67c58099932b452921224c1d957626e1603bcd2bc77c8fce394dc0026f289398c9191092075f598055f3b2aeaef83b0b09f55a97bce331c5e4e2904bafbd84bb62d2bfcf9d817f29fe0c67c9bbae7c081c6ea22a20edac1db8588f9a42b636c59f7f6388d5607b243ed873fee7bff9f839c892bf7685fdb9f8fabd90fa3bfa14d13d8c4cc0dcf8865917ea1c4df3634922714bdca305ae6e3c87c34e2b949af7cf3cecd7b4545332088084dcdd3c221a9d75497fdca897
+
 ```
 
 # Logging
