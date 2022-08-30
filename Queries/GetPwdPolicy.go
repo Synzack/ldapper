@@ -33,13 +33,22 @@ func GetPwdPolicy(baseDN string, conn *ldap.Conn) (queryResult string) {
 			queryResult = fmt.Sprintf("\nMinimum Password Length: \t%s\n", minPwdLength)
 			queryResult += fmt.Sprintf("Password History Length: \t%s\n", pwdHistoryLength)
 			queryResult += fmt.Sprintf("Lockout Threshold: \t%s\n", lockoutThreshold)
-			queryResult += fmt.Sprintf("Lockout Duration: \t%.0f\tminutes\n", Globals.ConvertToMinutes(lockoutDuration))
+
+			//check if lockout duration is 0 (until admin unlock )
+			if lockoutDuration == "-9223372036854775808" {
+				queryResult += fmt.Sprintf("Lockout Duration: \tUntil Admin Unlock\n")
+			} else {
+				queryResult += fmt.Sprintf("Lockout Duration: \t%.0f\tminutes\n", Globals.ConvertToMinutes(lockoutDuration))
+			}
+
+			//check if min password age is None
 			queryResult += fmt.Sprintf("Reset Account Lockout Counter: \t%.0f\tminutes\n", Globals.ConvertToMinutes(lockOutObservationWindow))
 			if minPwdAge == "0" {
 				queryResult += "Minimum Password Age: \tNone\n"
 			} else {
 				queryResult += fmt.Sprintf("Minimum Password Age: \t%.0f\tday(s)\n", Globals.ConvertToMinutes(minPwdAge)/60/24)
 			}
+
 			queryResult += fmt.Sprintf("Maximum Password Age: \t%.0f\tday(s)\n", Globals.ConvertToMinutes(maxPwdAge)/60/24)
 			queryResult += fmt.Sprintf("\t\nPassword Complexity: \t%s", pwdPropertiesResolved)
 		}
