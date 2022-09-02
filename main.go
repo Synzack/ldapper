@@ -188,9 +188,11 @@ func main() {
 
 	for { //Loop forever
 		fmt.Print("\n> ")
-		userQuery, err := reader.ReadString('\n')       //Read user input
-		userQuery = strings.TrimSuffix(userQuery, "\n") //Remove newline
-		if err != nil {                                 //Check for errors
+		userQuery, err := reader.ReadString('\n')            //Read user input
+		userQuery = strings.Replace(userQuery, "\n", "", -1) //Remove newline
+		userQuery = strings.Replace(userQuery, "\r", "", -1) //Needed to remove newline in Windows
+
+		if err != nil { //Check for errors
 			fmt.Fprintln(os.Stderr, err)
 		}
 
