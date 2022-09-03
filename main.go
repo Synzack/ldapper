@@ -167,7 +167,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		} else {
-			fmt.Println("Bind successful, dropping into shell. ")
+			fmt.Printf("Bind successful, dropping into shell.\nUse \"help\" for available commands.")
 		}
 	}
 
@@ -178,7 +178,7 @@ func main() {
 			fmt.Print("test\n")
 			log.Fatal(err)
 		} else {
-			fmt.Println("Bind successful, dropping into shell. ")
+			fmt.Println("Bind successful, dropping into shell.\nUse \"help\" for available commands.")
 		}
 	}
 	baseDN := Globals.GetBaseDN(opt.dc, conn)
@@ -187,7 +187,7 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 
 	for { //Loop forever
-		fmt.Print("\n> ")
+		fmt.Printf("\n%s > ", time.Now().Format("2006-01-02 15:04:05"))
 		userQuery, err := reader.ReadString('\n')            //Read user input
 		userQuery = strings.Replace(userQuery, "\n", "", -1) //Remove newline
 		userQuery = strings.Replace(userQuery, "\r", "", -1) //Needed to remove newline in Windows
@@ -360,9 +360,6 @@ func main() {
 			case "passpol":
 				result := Queries.GetPwdPolicy(baseDN, conn)
 				Globals.OutputAndLog(opt.logFile, result, 0, 8, 0, false)
-
-			default:
-				fmt.Println("Invalid command. Use command, \"help\" for available options.")
 			} // end 'module' switch
 		} else {
 			fmt.Print("Goodbye")
