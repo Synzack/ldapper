@@ -70,6 +70,7 @@ Usage of ./ldapper:
     	Log file
   -p string
     	Password
+  -k    Use Kerberos authentication
   -s	Bind using LDAPS
   -socks4 string
     	SOCKS4 Proxy Address (ip:port)
@@ -82,6 +83,7 @@ Usage of ./ldapper:
 Examples:
 	With Password: 	./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s
 	With Hash: 	./ldapper -u <username@domain> -H <hash> -dc <ip/FQDN> -s
+	With Kerberos:  ./ldapper -u <username@domain> -k -dc <ip/FQDN> -s
 ```
 
 # LDAPS Support
@@ -104,6 +106,14 @@ Ldapper can also authenticate with a user's NTLM hash. This method can be used w
 
 ```
 > ./ldapper -u 'hanzo@overwatch.local' -H OOGNKVJB2TRCYLD26H4DVPF3KBP0SG03 -dc 10.10.10.101 -s
+```
+
+## Kerberos
+
+Ldapper can also authenticate using a CCache file specefied in the KRB5CCNAME enviroment variable with the -k flag. 
+
+```
+> ./ldapper -u 'hanzo@overwatch.local' -k -dc 10.10.10.101 -s
 ```
 
 # Query Modules

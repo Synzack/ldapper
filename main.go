@@ -38,7 +38,7 @@ func options() *FlagOptions {
 	upn := flag.String("u", "", "Username (username@domain)")
 	password := flag.String("p", "", "Password")
 	ntlm := flag.String("H", "", "Use NTLM authentication")
-	kerberos := flag.Bool("k", false, "Use Kerberos authentication")
+	kerberos := flag.Bool("k", false, "Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME)")
 	dc := flag.String("dc", "", "IP address or FQDN of target DC")
 	scheme := flag.Bool("s", false, "Bind using LDAPS")
 	logFile := flag.String("o", "", "Log file")
@@ -100,6 +100,7 @@ func main() {
 		fmt.Println("Examples:")
 		fmt.Println("\tWith Password: \t./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s")
 		fmt.Println("\tWith Hash: \t./ldapper -u <username@domain> -H <hash> -dc <ip/FQDN> -s")
+		fmt.Println("\tWith Kerberos: \t./ldapper -u <username@domain> -k -dc <ip/FQDN> -s")
 		os.Exit(1)
 	}
 
