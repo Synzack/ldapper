@@ -3,6 +3,7 @@ package Commands
 import (
 	"encoding/hex"
 	"fmt"
+	"ldapper/Globals"
 	"log"
 	"os"
 	"strings"
@@ -17,25 +18,6 @@ import (
 // would rather just create a new config and make changes via functions
 // would be easier to read
 // cant seem to figure out how to add a [realm] though
-const (
-	libdefault = `[libdefaults]
-default_realm = %s
-dns_lookup_realm = false
-dns_lookup_kdc = false
-ticket_lifetime = 24h
-renew_lifetime = 5
-forwardable = yes
-proxiable = true
-default_tkt_enctypes = rc4-hmac
-default_tgs_enctypes = rc4-hmac
-noaddresses = true
-udp_preference_limit=1
-[realms]
-%s = {
-kdc = %s:88
-default_domain = %s
-    }`
-)
 
 func RequestSPN(targetUser string, username string, password string, ntlm string, domain string, dc string, socksServer string, socksType int) (spnResult string) {
 
@@ -47,7 +29,7 @@ func RequestSPN(targetUser string, username string, password string, ntlm string
 
 	l := log.New(os.Stderr, "GOKRB5 Client: ", log.Ldate|log.Ltime|log.Lshortfile)
 
-	c, err := config.NewFromString(fmt.Sprintf(libdefault, domain, domain, dc, domain))
+	c, err := config.NewFromString(fmt.Sprintf(Globals.Libdefault, domain, domain, dc, domain))
 
 	if err != nil {
 		l.Fatalf("Error Loading Config: %v\n", err)
