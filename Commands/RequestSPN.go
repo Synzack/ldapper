@@ -14,11 +14,6 @@ import (
 	"github.com/jcmturner/gokrb5/v8/iana/etypeID"
 )
 
-// dont really like this string for the config
-// would rather just create a new config and make changes via functions
-// would be easier to read
-// cant seem to figure out how to add a [realm] though
-
 func RequestSPN(targetUser string, username string, password string, ntlm string, domain string, dc string, socksServer string, socksType int) (spnResult string) {
 
 	var cl *client.Client
