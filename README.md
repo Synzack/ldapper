@@ -110,7 +110,7 @@ Ldapper can also authenticate with a user's NTLM hash. This method can be used w
 
 ## Kerberos
 
-Ldapper can also authenticate using a CCache file specefied in the KRB5CCNAME enviroment variable with the -k flag. 
+Ldapper can also authenticate using a CCache file specefied in the KRB5CCNAME enviroment variable with the `-k` flag. 
 
 ```
 > ./ldapper -u 'hanzo@overwatch.local' -k -dc 10.10.10.101 -s
