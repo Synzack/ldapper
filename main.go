@@ -20,10 +20,31 @@ import (
 	"h12.io/socks"
 )
 
+const (
+	libdefault = `[libdefaults]
+default_realm = %s
+dns_lookup_realm = false
+dns_lookup_kdc = false
+ticket_lifetime = 24h
+renew_lifetime = 5
+forwardable = yes
+proxiable = true
+default_tkt_enctypes = rc4-hmac
+default_tgs_enctypes = rc4-hmac
+noaddresses = true
+udp_preference_limit=1
+[realms]
+%s = {
+kdc = %s:88
+default_domain = %s
+}`
+)
+
 type FlagOptions struct {
 	upn      string
 	password string
 	ntlm     string
+	kerberos bool
 	dc       string
 	scheme   bool
 	logFile  string
@@ -37,6 +58,7 @@ func options() *FlagOptions {
 	upn := flag.String("u", "", "Username (username@domain)")
 	password := flag.String("p", "", "Password")
 	ntlm := flag.String("H", "", "Use NTLM authentication")
+	kerberos := flag.Bool("k", false, "Use Kerberos authentication")
 	dc := flag.String("dc", "", "IP address or FQDN of target DC")
 	scheme := flag.Bool("s", false, "Bind using LDAPS")
 	logFile := flag.String("o", "", "Log file")
@@ -50,6 +72,7 @@ func options() *FlagOptions {
 		upn:      *upn,
 		password: *password,
 		ntlm:     *ntlm,
+		kerberos: *kerberos,
 		dc:       *dc,
 		scheme:   *scheme,
 		logFile:  *logFile,
@@ -92,7 +115,7 @@ func main() {
 	}
 
 	// if required flags aren't set, print help
-	if username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "") || opt.help {
+	if username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "" && opt.kerberos == false) || opt.help {
 		flag.Usage()
 		fmt.Println("Examples:")
 		fmt.Println("\tWith Password: \t./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s")
@@ -181,6 +204,20 @@ func main() {
 			fmt.Println("Bind successful, dropping into shell. ")
 		}
 	}
+	// if kerberos option set
+	if opt.kerberos == true {
+		machineName := Globals.GetMachineHostname(opt.dc)
+
+		spnTarget := fmt.Sprintf("ldap/%s", machineName)
+
+		_, err = conn.GSSAPICCBindCCache(libdefault, domain, opt.dc, string(spnTarget), os.Getenv("KRB5CCNAME"))
+		if err != nil {
+			log.Fatal(err)
+		} else {
+			fmt.Println("Kerberos GSSAPI Bind succesful, dropping into shell. ")
+		}
+	}
+
 	baseDN := Globals.GetBaseDN(opt.dc, conn)
 
 	// Create impromptu shell for input

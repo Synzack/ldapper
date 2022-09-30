@@ -5,12 +5,15 @@ import (
 	"io"
 	"log"
 	"math"
+	"net"
 	"os"
 	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
 
+	"github.com/LeakIX/go-smb2"
+	"github.com/LeakIX/ntlmssp"
 	"github.com/go-ldap/ldap/v3"
 )
 
@@ -105,4 +108,39 @@ func GetArrayDifference(a, b []string) (diff []string) {
 	}
 
 	return
+}
+
+func GetMachineHostname(dc string) string {
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:445", dc))
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	ntlmsspClient, err := ntlmssp.NewClient(
+		ntlmssp.SetCompatibilityLevel(3),
+		ntlmssp.SetUserInfo("", ""),
+		ntlmssp.SetDomain(""))
+	if err != nil {
+		panic(err)
+	}
+	d := &smb2.Dialer{
+		Initiator: &smb2.NTLMSSPInitiator{
+			NTLMSSPClient: ntlmsspClient,
+		},
+	}
+
+	s, err := d.Dial(conn)
+	if err != nil {
+		log.Println(ntlmsspClient.SessionDetails().TargetInfo.Get(ntlmssp.MsvAvDNSComputerName))
+		panic(err)
+	}
+	dnsComputerName, _ := ntlmsspClient.SessionDetails().TargetInfo.Get(ntlmssp.MsvAvDNSComputerName)
+	defer s.Logoff()
+
+	dnsComputerNameString := string(dnsComputerName)
+	dnsComputerNameString = strings.Replace(dnsComputerNameString, "\x00", "", -1)
+
+	return dnsComputerNameString
+
 }
