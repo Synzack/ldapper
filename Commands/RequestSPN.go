@@ -6,46 +6,20 @@ import (
 	"ldapper/Globals"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/jcmturner/gokrb5/v8/client"
-	"github.com/jcmturner/gokrb5/v8/config"
-	"github.com/jcmturner/gokrb5/v8/credentials"
 	"github.com/jcmturner/gokrb5/v8/iana/etypeID"
 )
 
-func RequestSPN(targetUser string, username string, password string, ntlm string, domain string, dc string, socksServer string, socksType int) (spnResult string) {
+func RequestSPN(targetUser string, username string, password string, ntlm string, domain string, dc string, ccache bool, socksServer string, socksType int) (spnResult string) {
 
 	var cl *client.Client
 	var ticket string
+	var err error
 
-	// Need domain in uppercase for GOKRB5 Config
-	domain = strings.ToUpper(domain)
+	cl = Globals.GetKerberosClient(domain, dc, username, password, ntlm, ccache, socksServer, socksType)
 
 	l := log.New(os.Stderr, "GOKRB5 Client: ", log.Ldate|log.Ltime|log.Lshortfile)
-
-	c, err := config.NewFromString(fmt.Sprintf(Globals.Libdefault, domain, domain, dc, domain))
-
-	if err != nil {
-		l.Fatalf("Error Loading Config: %v\n", err)
-	}
-
-	// Create a Kerberos client with either password or hash
-	if password != "" {
-		cl = client.NewWithPassword(username, domain, password, c, client.DisablePAFXFAST(true), client.AssumePreAuthentication(false))
-	} else if ntlm != "" {
-		cl = client.NewWithHash(username, domain, ntlm, c, client.DisablePAFXFAST(true), client.AssumePreAuthentication(false))
-	} else {
-		ccache, _ := credentials.LoadCCache(os.Getenv("KRB5CCNAME"))
-		cl, _ = client.NewFromCCache(ccache, c)
-	}
-
-	// Add socks info to client config if enabled
-	if socksServer != "" {
-		cl.Config.Socks.Enabled = true
-		cl.Config.Socks.Version = socksType
-		cl.Config.Socks.Server = socksServer
-	}
 
 	err = cl.Login()
 	if err != nil {
