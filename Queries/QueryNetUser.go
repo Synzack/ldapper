@@ -73,6 +73,9 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 
 			//get Full Name
 			userCN := result.Entries[0].GetAttributeValues("cn")[0]
+			userCNEsc := strings.Replace(userCN, "\\", "", -1)
+            		userCNEsc = strings.Replace(userCNEsc, "(", ldap.EscapeFilter("("), -1) //Escape parenthesis
+		        userCNEsc = strings.Replace(userCNEsc, ")", ldap.EscapeFilter(")"), -1)
 			queryResult += fmt.Sprintf("Full Name: \t%s\n", userCN)
 
 			//get Comments
@@ -84,7 +87,7 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 			}
 
 			//get Account Active
-			userAccountControlQuery := fmt.Sprintf("(cn=%s)", userCN)                       // Query to search for user
+			userAccountControlQuery := fmt.Sprintf("(cn=%s)", userCNEsc)                       // Query to search for user
 			userAccountControlSearch := Globals.LdapSearch(baseDN, userAccountControlQuery) // Search request
 
 			userAccountControlResult, err := conn.Search(userAccountControlSearch)
