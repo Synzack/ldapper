@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/go-ldap/ldap/v3"
+	"github.com/jcmturner/gokrb5/v8/client"
 	"h12.io/socks"
 )
 
@@ -24,6 +25,7 @@ type FlagOptions struct {
 	upn      string
 	password string
 	ntlm     string
+	ccache   bool
 	dc       string
 	scheme   bool
 	logFile  string
@@ -37,6 +39,7 @@ func options() *FlagOptions {
 	upn := flag.String("u", "", "Username (username@domain)")
 	password := flag.String("p", "", "Password")
 	ntlm := flag.String("H", "", "Use NTLM authentication")
+	ccache := flag.Bool("k", false, "Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME)")
 	dc := flag.String("dc", "", "IP address or FQDN of target DC")
 	scheme := flag.Bool("s", false, "Bind using LDAPS")
 	logFile := flag.String("o", "", "Log file")
@@ -50,6 +53,7 @@ func options() *FlagOptions {
 		upn:      *upn,
 		password: *password,
 		ntlm:     *ntlm,
+		ccache:   *ccache,
 		dc:       *dc,
 		scheme:   *scheme,
 		logFile:  *logFile,
@@ -78,8 +82,10 @@ func main() {
 	var domain string
 	var username string
 	var target []string
+	var cl *client.Client
 	var socksType int
 	var socksAddress string
+	var proxyDial func(string, string) (net.Conn, error)
 
 	target = strings.Split(opt.upn, "@")
 
@@ -92,11 +98,12 @@ func main() {
 	}
 
 	// if required flags aren't set, print help
-	if username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "") || opt.help {
+	if username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "" && opt.ccache == false) || opt.help {
 		flag.Usage()
 		fmt.Println("Examples:")
 		fmt.Println("\tWith Password: \t./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s")
 		fmt.Println("\tWith Hash: \t./ldapper -u <username@domain> -H <hash> -dc <ip/FQDN> -s")
+		fmt.Println("\tWith Kerberos: \t./ldapper -u <username@domain> -k -dc <ip/FQDN> -s")
 		os.Exit(1)
 	}
 
@@ -124,7 +131,7 @@ func main() {
 		}
 
 		// check for socks options
-		proxyDial := socks.DialSocksProxy(socksType, socksAddress)
+		proxyDial = socks.DialSocksProxy(socksType, socksAddress)
 		if err != nil {
 			log.Fatal("Cannot initialize proxy.")
 		}
@@ -181,6 +188,25 @@ func main() {
 			fmt.Println("Bind successful, dropping into shell. ")
 		}
 	}
+	// if kerberos option set
+	if opt.ccache == true {
+		cl = Globals.GetKerberosClient(domain, opt.dc, username, opt.password, opt.ntlm, opt.ccache, socksAddress, socksType)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		machineName := Globals.GetMachineHostname(opt.dc, proxyDial)
+
+		spnTarget := fmt.Sprintf("ldap/%s", machineName)
+
+		_, err = conn.GSSAPICCBindCCache(cl, spnTarget)
+		if err != nil {
+			log.Fatal(err)
+		} else {
+			fmt.Println("Kerberos GSSAPI Bind succesful, dropping into shell. ")
+		}
+	}
+
 	baseDN := Globals.GetBaseDN(opt.dc, conn)
 
 	// Create impromptu shell for input
@@ -351,7 +377,7 @@ func main() {
 				}
 				roastuser := userInput[1]
 
-				result := Commands.RequestSPN(roastuser, username, opt.password, opt.ntlm, domain, opt.dc, socksAddress, socksType)
+				result := Commands.RequestSPN(roastuser, username, opt.password, opt.ntlm, domain, opt.dc, opt.ccache, socksAddress, socksType)
 				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
 			case "mquota":
 				result := Queries.GetMachineQuota(baseDN, conn)
