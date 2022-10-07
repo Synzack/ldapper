@@ -72,7 +72,8 @@ func main() {
 		"/ (_/\\ ) D (/    \\ ) __/ ) __/ ) _)  )   / \n" +
 		"\\____/(____/\\_/\\_/(__)  (__)  (____)(__\\_) \n" +
 		"                          @SpaceManMitch96\n" +
-		"                                @Synzack21\n\n"
+		"                                @Synzack21\n" +
+		"                                  @mfdooom\n\n"
 
 	fmt.Print(header)
 
