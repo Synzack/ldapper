@@ -26,6 +26,7 @@ This tool should be considered in its beta stages. Please report any bugs, issue
 - [Authentication](#authentication)
   - [Password](#password)
   - [NTLM](#ntlm)
+  - [Kerberos](#kerberos)
 - [Query Modules](#query-modules)
   - [Net](#net)
   - [Groups](#groups)
