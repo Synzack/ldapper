@@ -290,3 +290,4 @@ func ParseSD(SD string, baseDN string, conn *ldap.Conn) (abusableAcesResult []CH
 
 	}
 	return abusableAces
+}
