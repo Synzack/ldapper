@@ -74,8 +74,8 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 			//get Full Name
 			userCN := result.Entries[0].GetAttributeValues("cn")[0]
 			userCNEsc := strings.Replace(userCN, "\\", "", -1)
-            		userCNEsc = strings.Replace(userCNEsc, "(", ldap.EscapeFilter("("), -1) //Escape parenthesis
-		        userCNEsc = strings.Replace(userCNEsc, ")", ldap.EscapeFilter(")"), -1)
+			userCNEsc = strings.Replace(userCNEsc, "(", ldap.EscapeFilter("("), -1) //Escape parenthesis
+			userCNEsc = strings.Replace(userCNEsc, ")", ldap.EscapeFilter(")"), -1)
 			queryResult += fmt.Sprintf("Full Name: \t%s\n", userCN)
 
 			//get Comments
@@ -87,7 +87,7 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 			}
 
 			//get Account Active
-			userAccountControlQuery := fmt.Sprintf("(cn=%s)", userCNEsc)                       // Query to search for user
+			userAccountControlQuery := fmt.Sprintf("(cn=%s)", userCNEsc)                    // Query to search for user
 			userAccountControlSearch := Globals.LdapSearch(baseDN, userAccountControlQuery) // Search request
 
 			userAccountControlResult, err := conn.Search(userAccountControlSearch)
@@ -174,10 +174,16 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 					if strings.Contains(humanTime, "12/31/1600") {
 						humanTime = "Never"
 					}
-					queryResult += fmt.Sprintf("Last logon: \t%s\n", humanTime)
+					queryResult += fmt.Sprintf("Last Logon: \t%s\n", humanTime)
 				}
 			} else {
-				queryResult += ("Last logon: \t\n")
+				queryResult += ("Last Logon: \t\n")
+			}
+
+			//Get logon count
+			if len(userAccountControlResult.Entries[0].GetAttributeValues("logonCount")) > 0 { // If not empty
+				lastLogon := result.Entries[0].GetAttributeValues("logonCount")[0] //
+				queryResult += fmt.Sprintf("Logon Count: \t%s\n", lastLogon)
 			}
 
 			//Get Email Address
