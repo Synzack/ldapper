@@ -12,7 +12,6 @@ import (
 
 func RequestTicket(targetUser string, cl *client.Client) (spnResult string) {
 
-	//var cl *client.Client
 	var ticket string
 	var err error
 
