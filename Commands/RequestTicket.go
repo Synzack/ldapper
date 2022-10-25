@@ -3,7 +3,6 @@ package Commands
 import (
 	"encoding/hex"
 	"fmt"
-	"ldapper/Globals"
 	"log"
 	"os"
 
@@ -11,13 +10,11 @@ import (
 	"github.com/jcmturner/gokrb5/v8/iana/etypeID"
 )
 
-func RequestSPN(targetUser string, username string, password string, ntlm string, domain string, dc string, ccache bool, socksServer string, socksType int) (spnResult string) {
+func RequestTicket(targetUser string, cl *client.Client) (spnResult string) {
 
-	var cl *client.Client
+	//var cl *client.Client
 	var ticket string
 	var err error
-
-	cl = Globals.GetKerberosClient(domain, dc, username, password, ntlm, ccache, socksServer, socksType)
 
 	l := log.New(os.Stderr, "GOKRB5 Client: ", log.Ldate|log.Ltime|log.Lshortfile)
 
