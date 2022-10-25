@@ -26,6 +26,6 @@ require (
 	golang.org/x/net v0.0.0-20220725212005-46097bf591d3 // indirect
 )
 
-replace github.com/go-ldap/ldap/v3 => github.com/mfdooom/ldap/v3 v3.0.0-20221011222716-50d3514e647c
+replace github.com/go-ldap/ldap/v3 => github.com/synzack/ldap/v3 v3.0.0-20221012132208-c2f34c0638be
 
 replace github.com/jcmturner/gokrb5/v8 => github.com/mfdooom/gokrb5/v8 v8.4.3-0.20220930223631-56e96234d4e0

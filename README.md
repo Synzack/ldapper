@@ -33,6 +33,7 @@ This tool should be considered in its beta stages. Please report any bugs, issue
   - [GetUserSPNs](#getuserspns)
   - [Machine Account Quota](#machine-account-quota)
   - [Password Policy](#password-policy)
+  - [Enumerate DACL](#enumerate-dacl)
 - [Command Modules](#command-modules)
   - [Add Computer](#add-computer)
   - [Add SPN](#add-spn)
@@ -235,6 +236,39 @@ Maximum Password Age:           42      day(s)
 Password Complexity:            DOMAIN_PASSWORD_COMPLEX
 ```
 
+## Enumerate DACL
+This module queries for abusable ACES within a target object's DACL. Syntax is as follows:
+
+-`dacl <target object>`
+```
+> dacl administrator
+
+GENERIC_ALL:
+	System (Local System)
+
+GENERIC_WRITE:
+	Domain Admins
+	Enterprise Admins
+	Administrators
+	System (Local System)
+
+WRITE_OWNER:
+	Domain Admins
+	Enterprise Admins
+	Administrators
+	System (Local System)
+
+WRITE_DACL:
+	Domain Admins
+	Enterprise Admins
+	Administrators
+	System (Local System)
+
+FORCE_CHANGE_PASSWORD:
+
+ADD_MEMBER:
+
+```
 # Command Modules
 
 ## Add Computer

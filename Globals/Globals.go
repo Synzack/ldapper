@@ -50,6 +50,16 @@ func LdapSearch(baseDN string, query string) *ldap.SearchRequest {
 	)
 }
 
+func LdapSearchSD(baseDN string, query string) *ldap.SearchRequest {
+	return ldap.NewSearchRequest(
+		baseDN,
+		ldap.ScopeWholeSubtree, 0, 0, 0, false,
+		query,
+		[]string{"nTSecurityDescriptor"},
+		[]ldap.Control{&ldap.ControlMicrosoftSDFlags{ControlValue: 7}},
+	)
+}
+
 func OutputAndLog(fileName string, data string, minWidth int, tabWidth int, padding int, noStdOut bool) {
 	outputWriter := new(tabwriter.Writer)
 	var multiOut io.Writer

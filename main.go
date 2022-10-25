@@ -240,6 +240,7 @@ func main() {
 					"\tgroups <user>\n" +
 					"\tnet group <group>\n" +
 					"\tnet nestedGroups <group> (OPSEC Warning: Expensive LDAP query)\n" +
+					"\tdacl <target object> (Get vulnerable aces within the target's DACL)\n" +
 					"\tgetspns (Get All User SPNs)\n" +
 					"\tmquota (Get Machine Account Quota)\n" +
 					"\tpasspol (Get Domain Password Policy)\n" +
@@ -387,6 +388,16 @@ func main() {
 			case "passpol":
 				result := Queries.GetPwdPolicy(baseDN, conn)
 				Globals.OutputAndLog(opt.logFile, result, 0, 8, 0, false)
+
+			case "dacl":
+				if len(userInput) == 1 {
+					fmt.Println("Incorrect number of arguments. Usage: dacl <target object>")
+					break
+				}
+				arguments := userInput[1]
+
+				data := Queries.GetSecurityDescriptor(arguments, baseDN, conn)
+				Globals.OutputAndLog(opt.logFile, data, 6, 8, 4, false)
 
 			default:
 				fmt.Println("Invalid command. Use command, \"help\" for available options.")
