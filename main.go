@@ -379,7 +379,12 @@ func main() {
 				}
 				roastuser := userInput[1]
 
-				result := Commands.RequestSPN(roastuser, username, opt.password, opt.ntlm, domain, opt.dc, opt.ccache, socksAddress, socksType)
+				if cl == nil {
+					cl = Globals.GetKerberosClient(domain, opt.dc, username, opt.password, opt.ntlm, opt.ccache, socksAddress, socksType)
+				}
+
+				result := Commands.RequestTicket(roastuser, cl)
+
 				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
 			case "mquota":
 				result := Queries.GetMachineQuota(baseDN, conn)
