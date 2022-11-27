@@ -50,6 +50,7 @@ func LdapSearch(baseDN string, query string) *ldap.SearchRequest {
 	)
 }
 
+// Security Descriptor Functions
 func LdapSearchSD(baseDN string, query string) *ldap.SearchRequest {
 	return ldap.NewSearchRequest(
 		baseDN,
