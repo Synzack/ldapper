@@ -99,7 +99,7 @@ func main() {
 	}
 
 	// if required flags aren't set, print help
-	if username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "" && opt.ccache == false) || opt.help {
+	if username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "" && !opt.ccache) || opt.help {
 		flag.Usage()
 		fmt.Println("Examples:")
 		fmt.Println("\tWith Password: \t./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s")
@@ -190,7 +190,7 @@ func main() {
 		}
 	}
 	// if kerberos option set
-	if opt.ccache == true {
+	if opt.ccache {
 		cl = Globals.GetKerberosClient(domain, opt.dc, username, opt.password, opt.ntlm, opt.ccache, socksAddress, socksType)
 		if err != nil {
 			log.Fatal(err)
