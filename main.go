@@ -404,6 +404,23 @@ func main() {
 				data := Queries.GetSecurityDescriptor(arguments, baseDN, conn)
 				Globals.OutputAndLog(opt.logFile, data, 6, 8, 4, false)
 
+			case "bruteUsers":
+				if len(userInput) == 1 {
+					fmt.Println("Incorrect number of arguments. Usage: bruteUsers <username file>")
+					break
+				}
+				arguments := userInput[1]
+
+				// check if file exists
+				if _, err := os.Stat(arguments); os.IsNotExist(err) {
+					fmt.Println("File does not exist")
+					break
+				}
+
+				// send file name to BruteUSerQuery
+				result := Queries.BruteUserQuery(arguments, baseDN, conn)
+				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
+
 			default:
 				fmt.Println("Invalid command. Use command, \"help\" for available options.")
 			} // end 'module' switch

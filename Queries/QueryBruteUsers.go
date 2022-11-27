@@ -2,21 +2,41 @@ package Queries
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/go-ldap/ldap/v3"
 )
 
-func BruteUserQuery(groupInput string, baseDN string, conn *ldap.Conn, userList string) (queryResult string) {
+func BruteUserQuery(userList string, baseDN string, conn *ldap.Conn) (queryResult string) {
 
 	// if userList is empty, return an error and exit the function
 	if userList == "" {
 		queryResult = "[-] No users provided"
 		return
 	}
-	// else read the userList and for each user, run the query
-	users := strings.Split(userList, ",")
-	for _, user := range users {
+
+	// open the userList file
+	userListFile, err := os.Open(userList)
+	if err != nil {
+		fmt.Printf("[-] Error opening userList file: %s", err)
+		return
+	}
+	defer userListFile.Close()
+
+	// read the userList file
+	userListBytes := make([]byte, 1024) // 1kb buffer size
+	_, err = userListFile.Read(userListBytes)
+	if err != nil {
+		fmt.Printf("[-] Error reading userList file: %s", err)
+		return
+	}
+
+	// split the userList file into a slice of users
+	userListSlice := strings.Split(string(userListBytes), "\n")
+
+	// for each user in the userList, run the query
+	for _, user := range userListSlice {
 
 		searchReq := ldap.NewSearchRequest(
 			baseDN, // The base dn to search
@@ -36,7 +56,7 @@ func BruteUserQuery(groupInput string, baseDN string, conn *ldap.Conn, userList 
 		// if LdapSearch returns information
 		if len(result.Entries) > 0 {
 			queryResult += "[+] User found: " + user + "\n"
-		} 
+		}
 	}
 	return
 }
