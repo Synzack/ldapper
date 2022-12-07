@@ -386,6 +386,21 @@ func main() {
 				result := Commands.RequestTicket(roastuser, cl)
 
 				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
+			case "aes":
+				if len(userInput) == 1 {
+					fmt.Println("Incorrect number of arguments. Usage: roast <targetUser>")
+					break
+				}
+				roastuser := userInput[1]
+
+				if cl == nil {
+					cl = Globals.GetKerberosClientAES(domain, opt.dc, username, opt.password, opt.ntlm, opt.ccache, socksAddress, socksType)
+				}
+
+				result := Commands.RequestAESTicket(roastuser, cl)
+
+				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
+
 			case "mquota":
 				result := Queries.GetMachineQuota(baseDN, conn)
 				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)

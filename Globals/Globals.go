@@ -18,6 +18,7 @@ import (
 	"github.com/jcmturner/gokrb5/v8/client"
 	"github.com/jcmturner/gokrb5/v8/config"
 	"github.com/jcmturner/gokrb5/v8/credentials"
+	"github.com/jcmturner/gokrb5/v8/iana/etypeID"
 )
 
 const (
@@ -197,6 +198,52 @@ func GetKerberosClient(domain string, dc string, username string, password strin
 	domain = strings.ToUpper(domain)
 	c, _ := config.NewFromString(fmt.Sprintf(libdefault, domain, domain, dc, domain))
 
+	if ccacheAuth {
+		ccache, _ := credentials.LoadCCache(os.Getenv("KRB5CCNAME"))
+		cl, err = client.NewFromCCache(ccache, c)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else if password != "" {
+		cl = client.NewWithPassword(username, domain, password, c, client.DisablePAFXFAST(true), client.AssumePreAuthentication(false))
+	} else if ntlm != "" {
+		cl = client.NewWithHash(username, domain, ntlm, c, client.DisablePAFXFAST(true), client.AssumePreAuthentication(false))
+	}
+
+	if socksAddress != "" {
+		cl.Config.Socks.Enabled = true
+		cl.Config.Socks.Version = socksType
+		cl.Config.Socks.Server = socksAddress
+	}
+
+	return cl
+
+}
+
+func GetKerberosClientAES(domain string, dc string, username string, password string, ntlm string, ccacheAuth bool, socksAddress string, socksType int) *client.Client {
+
+	var cl *client.Client
+	var err error
+
+	domain = strings.ToUpper(domain)
+	c := config.New()
+	c.LibDefaults.DefaultRealm = domain
+	c.LibDefaults.Forwardable = true
+	c.LibDefaults.Canonicalize = true
+	c.LibDefaults.PermittedEnctypeIDs = []int32{etypeID.AES256_CTS_HMAC_SHA1_96}
+	c.LibDefaults.DefaultTGSEnctypeIDs = []int32{etypeID.AES256_CTS_HMAC_SHA1_96}
+	c.LibDefaults.DefaultTktEnctypeIDs = []int32{etypeID.AES256_CTS_HMAC_SHA1_96}
+	c.LibDefaults.UDPPreferenceLimit = 1
+
+	var realm config.Realm
+	realm.Realm = "RANGE.COM"
+	realm.KDC = []string{"192.168.168.132:88"}
+	realm.DefaultDomain = "RANGE.COM"
+
+	c.Realms = []config.Realm{realm}
+
+	json, _ := c.JSON()
+	fmt.Println(json)
 	if ccacheAuth {
 		ccache, _ := credentials.LoadCCache(os.Getenv("KRB5CCNAME"))
 		cl, err = client.NewFromCCache(ccache, c)
