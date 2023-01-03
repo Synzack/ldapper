@@ -112,6 +112,7 @@ func main() {
 		fmt.Println("\tWith Password: \t./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s")
 		fmt.Println("\tWith Hash: \t./ldapper -u <username@domain> -H <hash> -dc <ip/FQDN> -s")
 		fmt.Println("\tWith Kerberos: \t./ldapper -u <username@domain> -k -dc <ip/FQDN> -s")
+		fmt.Println("\tUser Enum: \t./ldapper -b <wordlist> -dc <ip/FQDN> -s -t <threads>")
 		os.Exit(1)
 	}
 
