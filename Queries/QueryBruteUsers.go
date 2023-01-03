@@ -1,66 +1,164 @@
 package Queries
 
 import (
+	"bufio"
+	"crypto/tls"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/go-ldap/ldap/v3"
 )
 
-func BruteUserQuery(userList string, baseDN string, conn *ldap.Conn) (queryResult string) {
+func BruteUserQuery(inputname string, server string, threads int, outputFile string, secure bool) {
 
-	// open the userList file
-	userListFile, err := os.Open(userList)
-	if err != nil {
-		fmt.Printf("[-] Error opening userList file: %s", err)
-		return
-	}
-	defer userListFile.Close()
+	var err error
 
-	// read the userList file
-	userListBytes := make([]byte, 5242880) // 5MB buffer size
-	_, err = userListFile.Read(userListBytes)
-	if err != nil {
-		fmt.Printf("[-] Error reading userList file: %s", err)
-		return
-	}
-
-	// split the userList file into a slice of users
-	userListSlice := strings.Split(string(userListBytes), "\n")
-
-	// remove any null bytes (prevents empty user found)
-	for i, user := range userListSlice {
-		userListSlice[i] = strings.Trim(user, "\x00")
-	}
-
-	// for each user in the userList, run the query
-	for _, user := range userListSlice {
-		// if read a blank line, skip it
-		if user == "" || user == "\r" || user == "\n" {
-			continue
-		}
-
-		searchReq := ldap.NewSearchRequest(
-			"", // The base dn to search
-			ldap.ScopeBaseObject, ldap.NeverDerefAliases, 0, 0, false,
-			fmt.Sprintf("(&(NtVer=\x06\x00\x00\x00)(AAC=\x10\x00\x00\x00)(User="+user+"))"), // The filter to apply
-			[]string{"NetLogon"}, // A list attributes to retrieve
-			nil,
-		)
-
-		result, err := conn.Search(searchReq)
+	// Open output file if specified
+	output := os.Stdout
+	if outputFile != "" {
+		output, err = os.Create(outputFile)
 		if err != nil {
-			fmt.Printf("Query error, %s", err)
-			queryResult = "[-] Query error"
-			return
+			log.Fatalf("Can't open %v: %v", outputFile, err)
 		}
-
-		res := result.Entries[0].Attributes[0].ByteValues[0]
-		if len(res) > 2 && res[0] == 0x17 && res[1] == 00 {
-			fmt.Println("[+] User found: " + user)
-		}
-
+		defer output.Close()
 	}
-	return
+
+	// Open input file
+	input := os.Stdin
+	if inputname != "" {
+		input, err = os.Open(inputname)
+		if err != nil {
+			log.Fatalf("Can't open %v: %v", inputname, err)
+		}
+		defer input.Close()
+
+		if outputFile != "" {
+			// Count lines
+			linescanner := bufio.NewScanner(input)
+			linescanner.Split(bufio.ScanLines)
+			var lines int
+			for linescanner.Scan() {
+				lines++
+			}
+			input.Seek(0, io.SeekStart)
+		}
+	}
+
+	// Read users from file
+	names := bufio.NewScanner(input)
+	names.Split(bufio.ScanLines)
+
+	// Create channels for parallel processing
+	inputBuffer := make(chan string, 128)
+	outputBuffer := make(chan string, 128)
+
+	// Create mutex for connecting to LDAP
+	var connectMutex sync.Mutex
+	var connectError error
+
+	// Use waitgroup to wait for all threads to finish
+	var jobs sync.WaitGroup
+
+	// Add threads to waitgroup and start them
+	jobs.Add(threads)
+	for i := 0; i < threads; i++ {
+		go func(server string) {
+			for {
+				connectMutex.Lock() // Lock mutex to prevent multiple threads from connecting at the same time
+				if connectError != nil {
+					connectMutex.Unlock() // Unlock mutex if there was an error
+					jobs.Done()
+					return
+				}
+
+				var conn *ldap.Conn
+				switch secure {
+				case false:
+					conn, err = ldap.Dial("tcp", fmt.Sprintf("%s:%d", server, 389))
+				case true:
+					config := &tls.Config{
+						ServerName:         server,
+						InsecureSkipVerify: true,
+					}
+					conn, err = ldap.DialTLS("tcp", fmt.Sprintf("%s:%d", server, 636), config)
+				}
+
+				if err != nil {
+					log.Printf("Problem connecting to LDAP %v server: %v", server, err)
+					connectError = err
+					jobs.Done()
+					connectMutex.Unlock()
+					return
+				}
+
+				// Unlock mutex after connection is established
+				connectMutex.Unlock()
+
+				// Start processing users from inputBuffer
+				for user := range inputBuffer {
+					request := ldap.NewSearchRequest(
+						"", // we don't care about the base DN
+						ldap.ScopeBaseObject, ldap.NeverDerefAliases, 0, 0, false,
+						fmt.Sprintf("(&(NtVer=\x06\x00\x00\x00)(AAC=\x10\x00\x00\x00)(User="+user+"))"), // The filter to apply
+						[]string{"NetLogon"}, // All that we care about is the NetLogon attribute
+						nil,
+					)
+					response, err := conn.Search(request)
+					if err != nil {
+						if v, ok := err.(*ldap.Error); ok && v.ResultCode == 201 {
+							continue
+						}
+						log.Printf("failed to execute search request: %v", err)
+						continue
+					}
+
+					res := response.Entries[0].Attributes[0].ByteValues[0]
+					if len(res) > 2 && res[0] == 0x17 && res[1] == 00 {
+						outputBuffer <- user
+					}
+
+				}
+				break
+			}
+
+			jobs.Done()
+		}(server)
+	}
+
+	// Start reading users from outputBuffer and put them in file or console
+	go func() {
+		for user := range outputBuffer {
+			// this if statement is to console output issues when using the -o flag
+			if outputFile != "" {
+				fmt.Println("[+] Found user: " + user)
+			} else {
+				fmt.Print("[+] Found user: ")
+			}
+			fmt.Fprintln(output, user)
+		}
+	}()
+
+	// Start reading users from file and put them in inputBuffer
+	go func() {
+		var line int
+		for names.Scan() {
+
+			user := names.Text()
+			if user != "" {
+				if strings.ContainsAny(user, `"/\:;|=,+*?<>`) {
+					continue
+				}
+				inputBuffer <- user
+			}
+			line++
+		}
+		close(inputBuffer)
+	}()
+
+	jobs.Wait()
+	close(outputBuffer)
 }

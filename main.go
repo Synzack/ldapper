@@ -33,6 +33,7 @@ type FlagOptions struct {
 	socks4a  string
 	socks5   string
 	brute    string
+	threads  int
 	help     bool
 }
 
@@ -48,6 +49,7 @@ func options() *FlagOptions {
 	socks4a := flag.String("socks4a", "", "SOCKS4A Proxy Address (ip:port)")
 	socks5 := flag.String("socks5", "", "SOCKS5 Proxy Address (ip:port)")
 	brute := flag.String("b", "", "Brute force users from a file")
+	threads := flag.Int("t", 4, "Number of threads to use (default 4)")
 	help := flag.Bool("h", false, "Display help menu")
 
 	flag.Parse()
@@ -63,6 +65,7 @@ func options() *FlagOptions {
 		socks4a:  *socks4a,
 		socks5:   *socks5,
 		brute:    *brute,
+		threads:  *threads,
 		help:     *help}
 
 }
@@ -175,8 +178,7 @@ func main() {
 
 	if opt.brute != "" {
 		// send file name to BruteUSerQuery
-		result := Queries.BruteUserQuery(opt.brute, opt.dc, conn)
-		Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
+		Queries.BruteUserQuery(opt.brute, opt.dc, opt.threads, opt.logFile, opt.scheme)
 		return
 	}
 
