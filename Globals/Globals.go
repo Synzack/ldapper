@@ -22,22 +22,22 @@ import (
 
 const (
 	libdefault = `[libdefaults]
-default_realm = %s
-dns_lookup_realm = false
-dns_lookup_kdc = false
-ticket_lifetime = 24h
-renew_lifetime = 5
-forwardable = yes
-proxiable = true
-default_tkt_enctypes = rc4-hmac
-default_tgs_enctypes = rc4-hmac
-noaddresses = true
-udp_preference_limit=1
-[realms]
-%s = {
-kdc = %s:88
-default_domain = %s
-}`
+		default_realm = %s
+		dns_lookup_realm = false
+		dns_lookup_kdc = false
+		ticket_lifetime = 24h
+		renew_lifetime = 5
+		forwardable = yes
+		proxiable = true
+		default_tkt_enctypes = rc4-hmac
+		default_tgs_enctypes = rc4-hmac
+		noaddresses = true
+		udp_preference_limit=1
+		[realms]
+		%s = {
+		kdc = %s:88
+		default_domain = %s
+		}`
 )
 
 func LdapSearch(baseDN string, query string) *ldap.SearchRequest {
@@ -86,9 +86,10 @@ func OutputAndLog(fileName string, data string, minWidth int, tabWidth int, padd
 }
 
 func ConvertLDAPTime(t int) time.Time {
+	var timeStamp int64
 	LDAPtime := t
 	winSecs := LDAPtime / 10000000
-	timeStamp := winSecs - 11644473600
+	timeStamp = int64(winSecs) - 11644473600
 	return time.Unix(int64(timeStamp), 0)
 }
 
