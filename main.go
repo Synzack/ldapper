@@ -32,6 +32,8 @@ type FlagOptions struct {
 	socks4   string
 	socks4a  string
 	socks5   string
+	brute    string
+	threads  int
 	help     bool
 }
 
@@ -46,6 +48,8 @@ func options() *FlagOptions {
 	socks4 := flag.String("socks4", "", "SOCKS4 Proxy Address (ip:port)")
 	socks4a := flag.String("socks4a", "", "SOCKS4A Proxy Address (ip:port)")
 	socks5 := flag.String("socks5", "", "SOCKS5 Proxy Address (ip:port)")
+	brute := flag.String("b", "", "Brute force users from a file")
+	threads := flag.Int("t", 4, "Number of threads to use (default 4)")
 	help := flag.Bool("h", false, "Display help menu")
 
 	flag.Parse()
@@ -60,6 +64,8 @@ func options() *FlagOptions {
 		socks4:   *socks4,
 		socks4a:  *socks4a,
 		socks5:   *socks5,
+		brute:    *brute,
+		threads:  *threads,
 		help:     *help}
 
 }
@@ -99,12 +105,14 @@ func main() {
 	}
 
 	// if required flags aren't set, print help
-	if username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "" && opt.ccache == false) || opt.help {
+	// if opt.brute is set, we don't need a username
+	if opt.brute == "" && (username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "" && !opt.ccache) || opt.help) {
 		flag.Usage()
 		fmt.Println("Examples:")
 		fmt.Println("\tWith Password: \t./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s")
 		fmt.Println("\tWith Hash: \t./ldapper -u <username@domain> -H <hash> -dc <ip/FQDN> -s")
 		fmt.Println("\tWith Kerberos: \t./ldapper -u <username@domain> -k -dc <ip/FQDN> -s")
+		fmt.Println("\tUser Enum: \t./ldapper -b <wordlist> -dc <ip/FQDN> -s -t <threads>")
 		os.Exit(1)
 	}
 
@@ -169,6 +177,12 @@ func main() {
 
 	defer conn.Close() //Close connection when done
 
+	if opt.brute != "" {
+		// send file name to BruteUSerQuery
+		Queries.BruteUserQuery(opt.brute, opt.dc, opt.threads, opt.logFile, opt.scheme)
+		return
+	}
+
 	// if password option set
 	if opt.password != "" {
 		err = conn.Bind(opt.upn, opt.password)
@@ -189,8 +203,9 @@ func main() {
 			fmt.Println("Bind successful, dropping into shell. ")
 		}
 	}
+
 	// if kerberos option set
-	if opt.ccache == true {
+	if opt.ccache {
 		cl = Globals.GetKerberosClient(domain, opt.dc, username, opt.password, opt.ntlm, opt.ccache, socksAddress, socksType)
 		if err != nil {
 			log.Fatal(err)
@@ -403,7 +418,6 @@ func main() {
 
 				data := Queries.GetSecurityDescriptor(arguments, baseDN, conn)
 				Globals.OutputAndLog(opt.logFile, data, 6, 8, 4, false)
-
 			default:
 				fmt.Println("Invalid command. Use command, \"help\" for available options.")
 			} // end 'module' switch

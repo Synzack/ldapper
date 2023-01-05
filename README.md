@@ -6,7 +6,7 @@
 
 A GoLang tool to enumerate and abuse LDAP. Made _simple_.
 
-Ldapper was created with for use in offensive security engagements for **_targeted_** user enumeration, group enumeration, and more. Ldapper uses familiar "net" commands such as "net user" and "net group" to perform all its queries and its output follows the same conventions. Ldapper's user interface operates as a pseudo-interactive shell, where the user can input commands until exited. All traffic goes over the LDAP(S) protocol with a singular bind to help you better blend into the network.
+Ldapper was created with for use in offensive security engagements for user enumeration, group enumeration, and more. Ldapper uses familiar "net" commands such as "net user" and "net group" to perform all its queries and its output follows the same conventions. Ldapper's user interface operates as a pseudo-interactive shell, where the user can input commands until exited. All traffic goes over the LDAP(S) protocol with a singular bind to help you better blend into the network.
 
 Ldapper is proxy aware and supports NTLM authentication with a user's hash. Additionally, this tool can perform modification actions within LDAP. More functionality is planned for later releases, but for now additional supported command functions are:
 
@@ -40,52 +40,59 @@ This tool should be considered in its beta stages. Please report any bugs, issue
   - [Kerberoast](#kerberoast)
 - [Logging](#logging)
 - [Proxy Support](#proxy-support)
+- [User Enumeration](#user-enumeration)
 
 ## Installation
 
 Ldapper can be built and ran using the following commands inside of the repository folder:
 
 ```
-go mod tidy             - pull down all necessary dependencies
-go build                - build Ldapper
-./ldapper               - run Ldapper
+$ go mod tidy             - pull down all necessary dependencies
+$ go build                - build Ldapper
+$ ./ldapper               - run Ldapper
 ```
 
 ## Help
 
 ```
-./ldapper -h
- __    ____   __   ____  ____  ____  ____
-(  )  (    \ / _\ (  _ \(  _ \(  __)(  _ \
-/ (_/\ ) D (/    \ ) __/ ) __/ ) _)  )   /
-\____/(____/\_/\_/(__)  (__)  (____)(__\_)
+$ ./ldapper -h
+ __    ____   __   ____  ____  ____  ____  
+(  )  (    \ / _\ (  _ \(  _ \(  __)(  _ \ 
+/ (_/\ ) D (/    \ ) __/ ) __/ ) _)  )   / 
+\____/(____/\_/\_/(__)  (__)  (____)(__\_) 
                           @SpaceManMitch96
                                 @Synzack21
+                                  @mfdooom
 
 Usage of ./ldapper:
   -H string
-    	Use NTLM authentication
+        Use NTLM authentication
+  -b string
+        Brute force users from a file
   -dc string
-    	IP address or FQDN of target DC
-  -h	Display help menu
+        IP address or FQDN of target DC
+  -h    Display help menu
+  -k    Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME)
   -o string
-    	Log file
+        Log file
   -p string
-    	Password
-  -k    Use Kerberos authentication
-  -s	Bind using LDAPS
+        Password
+  -s    Bind using LDAPS
   -socks4 string
-    	SOCKS4 Proxy Address (ip:port)
+        SOCKS4 Proxy Address (ip:port)
   -socks4a string
-    	SOCKS4A Proxy Address (ip:port)
+        SOCKS4A Proxy Address (ip:port)
   -socks5 string
-    	SOCKS5 Proxy Address (ip:port)
+        SOCKS5 Proxy Address (ip:port)
+  -t int
+        Number of threads to use (default 4) (default 4)
   -u string
-    	Username (username@domain)
+        Username (username@domain)
 Examples:
-	With Password: 	./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s
-	With Hash: 	./ldapper -u <username@domain> -H <hash> -dc <ip/FQDN> -s
-	With Kerberos:  ./ldapper -u <username@domain> -k -dc <ip/FQDN> -s
+        With Password:  ./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s
+        With Hash:      ./ldapper -u <username@domain> -H <hash> -dc <ip/FQDN> -s
+        With Kerberos:  ./ldapper -u <username@domain> -k -dc <ip/FQDN> -s
+        User Enum:      ./ldapper -b <wordlist> -dc <ip/FQDN> -s -t <threads>
 ```
 
 # LDAPS Support
@@ -99,7 +106,7 @@ Ldapper supports the ability to bind to LDAP using either unencrypted LDAP on po
 Ldapper can be used with a username and password. This is the most common method of authentication. The username format follows the below covention:
 
 ```
-> ./ldapper -u 'hanzo@overwatch.local' -P "Password123!" -dc 10.10.10.101 -s
+$ ./ldapper -u 'hanzo@overwatch.local' -P "Password123!" -dc 10.10.10.101 -s
 ```
 
 ## NTLM
@@ -107,7 +114,7 @@ Ldapper can be used with a username and password. This is the most common method
 Ldapper can also authenticate with a user's NTLM hash. This method can be used with the `-H` flag. 
 
 ```
-> ./ldapper -u 'hanzo@overwatch.local' -H OOGNKVJB2TRCYLD26H4DVPF3KBP0SG03 -dc 10.10.10.101 -s
+$ ./ldapper -u 'hanzo@overwatch.local' -H OOGNKVJB2TRCYLD26H4DVPF3KBP0SG03 -dc 10.10.10.101 -s
 ```
 
 ## Kerberos
@@ -115,7 +122,7 @@ Ldapper can also authenticate with a user's NTLM hash. This method can be used w
 Ldapper can also authenticate using a CCache file specefied in the KRB5CCNAME enviroment variable with the `-k` flag. 
 
 ```
-> ./ldapper -u 'hanzo@overwatch.local' -k -dc 10.10.10.101 -s
+$ ./ldapper -u 'hanzo@overwatch.local' -k -dc 10.10.10.101 -s
 ```
 
 # Query Modules
@@ -315,7 +322,7 @@ $krb5tgs$23$*LIDIA_ELLIOT$RANGE.COM$LIDIA_ELLIOT*$31d99685e614b96bb9fab3a534f3a6
 Currently, Ldapper supports logging of stdout to a specified log file. This can be called using the `-o` flag. The log file will be created in the current directory. If the log file already exists, it will be appended to.
 
 ```
-./ldapper -u hanzo@overwatch.local -P "Password123!" -dc 10.10.10.101 -s -o ldapper.log
+$ ./ldapper -u hanzo@overwatch.local -P "Password123!" -dc 10.10.10.101 -s -o ldapper.log
 ```
 
 # Proxy Support
@@ -323,17 +330,44 @@ Currently, Ldapper supports logging of stdout to a specified log file. This can 
 Ldapper supports all SOCKS4, SOCKS4A, and SOCKS5 proxies. The proxy can be specified with the `-socks4`, `-socks4a`, and `-socks5` flags respectively. Proxy functionality is compatible with C2 frameworks such as Cobalt Strike.
 
 ```
-./ldapper -u hanzo@overwatch.local -P "Password123!" -dc 10.10.10.101 -socks4 127.0.0.1:6666 -s
+$ ./ldapper -u hanzo@overwatch.local -P "Password123!" -dc 10.10.10.101 -socks4 127.0.0.1:6666 -s
  __    ____   __   ____  ____  ____  ____
 (  )  (    \ / _\ (  _ \(  _ \(  __)(  _ \
 / (_/\ ) D (/    \ ) __/ ) __/ ) _)  )   /
 \____/(____/\_/\_/(__)  (__)  (____)(__\_)
                           @SpaceManMitch96
                                 @Synzack21
+                                  @mfdooom
 
 Connecting with proxy: 127.0.0.1:6666
 
 Bind successful, dropping into shell.
 
 >
+```
+
+# User Enumeration
+
+Ldapper also can brute force user enumeration through unauthenticated LDAP querries. Found users can also be exported to a file for further enumeration or testing.
+
+```
+$ ./ldapper -b users.txt -dc 10.10.10.101 -s -t 10 -o FoundUsers.txt
+ __    ____   __   ____  ____  ____  ____  
+(  )  (    \ / _\ (  _ \(  _ \(  __)(  _ \ 
+/ (_/\ ) D (/    \ ) __/ ) __/ ) _)  )   / 
+\____/(____/\_/\_/(__)  (__)  (____)(__\_) 
+                          @SpaceManMitch96
+                                @Synzack21
+                                  @mfdooom
+
+[+] Found user: hanzo
+[+] Found user: tracer
+[+] Found user: sombra
+[+] Found user: Administrator
+
+$ cat FoundUsers.txt
+hanzo
+tracer
+sombra
+Administrator
 ```

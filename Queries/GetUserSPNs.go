@@ -18,7 +18,7 @@ func GetUserSPNs(baseDN string, conn *ldap.Conn) (queryResult string) {
 	}
        
         // Build output header Row 
-        queryResult = fmt.Sprintf("SPN\tUsername\tPasswordLastSet\tLastLogon\tDelegation\n")
+        queryResult = ("SPN\tUsername\tPasswordLastSet\tLastLogon\tDelegation\n")
 
         // check if LDAPSearch returned any entries
         if len(result.Entries) > 0 {

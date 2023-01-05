@@ -36,7 +36,7 @@ func GetPwdPolicy(baseDN string, conn *ldap.Conn) (queryResult string) {
 
 			//check if lockout duration is 0 (until admin unlock )
 			if lockoutDuration == "-9223372036854775808" {
-				queryResult += fmt.Sprintf("Lockout Duration: \tUntil Admin Unlock\n")
+				queryResult += ("Lockout Duration: \tUntil Admin Unlock\n")
 			} else {
 				queryResult += fmt.Sprintf("Lockout Duration: \t%.0f\tminutes\n", Globals.ConvertToMinutes(lockoutDuration))
 			}
