@@ -48,8 +48,8 @@ func options() *FlagOptions {
 	socks4 := flag.String("socks4", "", "SOCKS4 Proxy Address (ip:port)")
 	socks4a := flag.String("socks4a", "", "SOCKS4A Proxy Address (ip:port)")
 	socks5 := flag.String("socks5", "", "SOCKS5 Proxy Address (ip:port)")
-	brute := flag.String("b", "", "Brute force users from a file")
-	threads := flag.Int("t", 4, "Number of threads to use (default 4)")
+	brute := flag.String("b", "", "Brute force users from a file. Use -t to specify number of threads.")
+	threads := flag.Int("t", 4, "Number of threads to use. Only used for user enumeration.")
 	help := flag.Bool("h", false, "Display help menu")
 
 	flag.Parse()
