@@ -56,11 +56,11 @@ $ ./ldapper               - run Ldapper
 ## Help
 
 ```
-$ ./ldapper -h
- __    ____   __   ____  ____  ____  ____
-(  )  (    \ / _\ (  _ \(  _ \(  __)(  _ \
-/ (_/\ ) D (/    \ ) __/ ) __/ ) _)  )   /
-\____/(____/\_/\_/(__)  (__)  (____)(__\_)
+$ ./ldapper
+ __    ____   __   ____  ____  ____  ____  
+(  )  (    \ / _\ (  _ \(  _ \(  __)(  _ \ 
+/ (_/\ ) D (/    \ ) __/ ) __/ ) _)  )   / 
+\____/(____/\_/\_/(__)  (__)  (____)(__\_) 
                           @SpaceManMitch96
                                 @Synzack21
                                   @mfdooom
@@ -69,7 +69,7 @@ Usage of ./ldapper:
   -H string
         Use NTLM authentication
   -b string
-        Brute force users from a file
+        Brute force users from a file. Use -t to specify number of threads.
   -dc string
         IP address or FQDN of target DC
   -h    Display help menu
@@ -86,7 +86,7 @@ Usage of ./ldapper:
   -socks5 string
         SOCKS5 Proxy Address (ip:port)
   -t int
-        Number of threads to use (default 4) (default 4)
+        Number of threads to use. Only used for user enumeration. (default 4)
   -u string
         Username (username@domain)
 Examples:
