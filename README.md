@@ -41,6 +41,7 @@ This tool should be considered in its beta stages. Please report any bugs, issue
   - [Kerberoast](#kerberoast)
 - [Logging](#logging)
 - [Proxy Support](#proxy-support)
+- [Special Thanks](#special-thanks)
 
 ## Installation
 
@@ -381,3 +382,7 @@ Bind successful, dropping into shell.
 
 >
 ```
+
+# Special Thanks
+
+Special thanks to [Lars Karlslund](https://github.com/lkarlslund) for his work on [LDAP Nom Nom]([https://](https://github.com/lkarlslund/ldapnomnom)) which was used as inspiration to build out the [User Enumeration](#user-enumeration) functionality.
