@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://media.slid.es/uploads/329014/images/6449038/gopher_hat.png" alt="drawing" width="200">
+    <img src="images/ldapper.png" alt="LDAPPER" width="300">
 </p>
 
 # Ldapper
