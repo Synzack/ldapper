@@ -191,7 +191,7 @@ func main() {
 	}
 	// if kerberos option set
 	if opt.ccache == true {
-		cl = Globals.GetKerberosClient(domain, opt.dc, username, opt.password, opt.ntlm, opt.ccache, socksAddress, socksType)
+		cl = Globals.GetKerberosClient(domain, opt.dc, username, opt.password, opt.ntlm, opt.ccache, "aes", socksAddress, socksType)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -247,7 +247,7 @@ func main() {
 					"Commands:\n" +
 					"\taddComputer <computerName$>  (Requires LDAPS)\n" +
 					"\tspn <add/delete> <targetUser> <spn>\n" +
-					"\troast <targetUser>\n" +
+					"\troast <rc4/aes> <targetUser>\n" +
 					"Exit:\n" +
 					"\texit"
 				fmt.Println(help)
@@ -374,33 +374,26 @@ func main() {
 
 			case "roast":
 				if len(userInput) == 1 {
-					fmt.Println("Incorrect number of arguments. Usage: roast <targetUser>")
+					fmt.Println("Incorrect number of arguments. Usage: roast <rc4/aes> <targetUser>")
 					break
 				}
-				roastuser := userInput[1]
+				arguments := userInput[1]
 
-				if cl == nil {
-					cl = Globals.GetKerberosClient(domain, opt.dc, username, opt.password, opt.ntlm, opt.ccache, socksAddress, socksType)
+				// if the length of the options does not == 2, break, show error
+				roastArgs := strings.SplitN(arguments, " ", 2)
+
+				if len(roastArgs) != 2 {
+					fmt.Println("Incorrect number of arguments. Usage: roast <rc4/aes> <targetUser>")
+					break
 				}
+
+				etype, roastuser := roastArgs[0], roastArgs[1]
+
+				cl = Globals.GetKerberosClient(domain, opt.dc, username, opt.password, opt.ntlm, opt.ccache, etype, socksAddress, socksType)
 
 				result := Commands.RequestTicket(roastuser, cl)
 
 				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
-			case "aes":
-				if len(userInput) == 1 {
-					fmt.Println("Incorrect number of arguments. Usage: roast <targetUser>")
-					break
-				}
-				roastuser := userInput[1]
-
-				if cl == nil {
-					cl = Globals.GetKerberosClientAES(domain, opt.dc, username, opt.password, opt.ntlm, opt.ccache, socksAddress, socksType)
-				}
-
-				result := Commands.RequestAESTicket(roastuser, cl)
-
-				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
-
 			case "mquota":
 				result := Queries.GetMachineQuota(baseDN, conn)
 				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)

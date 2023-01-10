@@ -1,6 +1,7 @@
 package Globals
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
@@ -18,27 +19,8 @@ import (
 	"github.com/jcmturner/gokrb5/v8/client"
 	"github.com/jcmturner/gokrb5/v8/config"
 	"github.com/jcmturner/gokrb5/v8/credentials"
-	"github.com/jcmturner/gokrb5/v8/iana/etypeID"
-)
 
-const (
-	libdefault = `[libdefaults]
-default_realm = %s
-dns_lookup_realm = false
-dns_lookup_kdc = false
-ticket_lifetime = 24h
-renew_lifetime = 5
-forwardable = yes
-proxiable = true
-default_tkt_enctypes = rc4-hmac
-default_tgs_enctypes = rc4-hmac
-noaddresses = true
-udp_preference_limit=1
-[realms]
-%s = {
-kdc = %s:88
-default_domain = %s
-}`
+	"github.com/jcmturner/gofork/encoding/asn1"
 )
 
 func LdapSearch(baseDN string, query string) *ldap.SearchRequest {
@@ -190,60 +172,43 @@ func GetMachineHostname(dc string, proxyDial func(string, string) (net.Conn, err
 
 }
 
-func GetKerberosClient(domain string, dc string, username string, password string, ntlm string, ccacheAuth bool, socksAddress string, socksType int) *client.Client {
+func GetKerberosClient(domain string, dc string, username string, password string, ntlm string, ccacheAuth bool, etype string, socksAddress string, socksType int) *client.Client {
 
 	var cl *client.Client
 	var err error
+	var etypeid int32
 
-	domain = strings.ToUpper(domain)
-	c, _ := config.NewFromString(fmt.Sprintf(libdefault, domain, domain, dc, domain))
-
-	if ccacheAuth {
-		ccache, _ := credentials.LoadCCache(os.Getenv("KRB5CCNAME"))
-		cl, err = client.NewFromCCache(ccache, c)
-		if err != nil {
-			log.Fatal(err)
-		}
-	} else if password != "" {
-		cl = client.NewWithPassword(username, domain, password, c, client.DisablePAFXFAST(true), client.AssumePreAuthentication(false))
-	} else if ntlm != "" {
-		cl = client.NewWithHash(username, domain, ntlm, c, client.DisablePAFXFAST(true), client.AssumePreAuthentication(false))
+	switch etype {
+	case "rc4":
+		etypeid = 23
+	case "aes":
+		etypeid = 18
 	}
-
-	if socksAddress != "" {
-		cl.Config.Socks.Enabled = true
-		cl.Config.Socks.Version = socksType
-		cl.Config.Socks.Server = socksAddress
-	}
-
-	return cl
-
-}
-
-func GetKerberosClientAES(domain string, dc string, username string, password string, ntlm string, ccacheAuth bool, socksAddress string, socksType int) *client.Client {
-
-	var cl *client.Client
-	var err error
-
 	domain = strings.ToUpper(domain)
 	c := config.New()
 	c.LibDefaults.DefaultRealm = domain
-	c.LibDefaults.Forwardable = true
-	c.LibDefaults.Canonicalize = true
-	c.LibDefaults.PermittedEnctypeIDs = []int32{etypeID.AES256_CTS_HMAC_SHA1_96}
-	c.LibDefaults.DefaultTGSEnctypeIDs = []int32{etypeID.AES256_CTS_HMAC_SHA1_96}
-	c.LibDefaults.DefaultTktEnctypeIDs = []int32{etypeID.AES256_CTS_HMAC_SHA1_96}
+	c.LibDefaults.PermittedEnctypeIDs = []int32{etypeid}
+	c.LibDefaults.DefaultTGSEnctypeIDs = []int32{etypeid}
+	c.LibDefaults.DefaultTktEnctypeIDs = []int32{etypeid}
 	c.LibDefaults.UDPPreferenceLimit = 1
 
+	tgsopts := asn1.BitString{}
+	tgsopts.Bytes, _ = hex.DecodeString("40810010")
+	tgsopts.BitLength = len(tgsopts.Bytes) * 8
+	c.LibDefaults.KDCTGSDefaultOptions = tgsopts
+
+	asopts := asn1.BitString{}
+	asopts.Bytes, _ = hex.DecodeString("10000000")
+	asopts.BitLength = len(asopts.Bytes) * 8
+	c.LibDefaults.KDCDefaultOptions = asopts
+
 	var realm config.Realm
-	realm.Realm = "RANGE.COM"
-	realm.KDC = []string{"192.168.168.132:88"}
-	realm.DefaultDomain = "RANGE.COM"
+	realm.Realm = domain
+	realm.KDC = []string{fmt.Sprintf("%s:88", dc)}
+	realm.DefaultDomain = domain
 
 	c.Realms = []config.Realm{realm}
 
-	json, _ := c.JSON()
-	fmt.Println(json)
 	if ccacheAuth {
 		ccache, _ := credentials.LoadCCache(os.Getenv("KRB5CCNAME"))
 		cl, err = client.NewFromCCache(ccache, c)
