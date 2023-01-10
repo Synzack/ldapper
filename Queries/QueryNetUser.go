@@ -104,14 +104,14 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 			}
 
 			// Get all the user account attributes
-			queryResult += fmt.Sprintf("User Account Control: ")
-			for code, _ := range userAccountControlMap {
+			queryResult += "User Account Control: "
+			for code := range userAccountControlMap {
 				if (code & userAccountControl) > 0 {
 					queryResult += fmt.Sprintf("\t%s\n", userAccountControlMap[code])
 				}
 
 			}
-			queryResult += fmt.Sprintf("\t(If Enabled, Check Last Lockout Time)\n")
+			queryResult += "\t(If Enabled, Check Last Lockout Time)\n"
 
 			if len(userAccountControlResult.Entries[0].GetAttributeValues("lockoutTime")) > 0 {
 				lockoutTime := userAccountControlResult.Entries[0].GetAttributeValues("lockoutTime")[0]

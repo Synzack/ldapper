@@ -33,6 +33,7 @@ func LdapSearch(baseDN string, query string) *ldap.SearchRequest {
 	)
 }
 
+// Security Descriptor Functions
 func LdapSearchSD(baseDN string, query string) *ldap.SearchRequest {
 	return ldap.NewSearchRequest(
 		baseDN,
@@ -68,9 +69,10 @@ func OutputAndLog(fileName string, data string, minWidth int, tabWidth int, padd
 }
 
 func ConvertLDAPTime(t int) time.Time {
+	var timeStamp int64
 	LDAPtime := t
 	winSecs := LDAPtime / 10000000
-	timeStamp := winSecs - 11644473600
+	timeStamp = int64(winSecs) - 11644473600
 	return time.Unix(int64(timeStamp), 0)
 }
 

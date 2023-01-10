@@ -27,42 +27,42 @@ func GetSecurityDescriptor(input string, baseDN string, conn *ldap.Conn) (queryR
 
 		queryResult += "\nGENERIC_ALL:\n"
 		for _, entry := range abusableAces {
-			if entry.GENERIC_ALL == true {
+			if entry.GENERIC_ALL {
 				queryResult += fmt.Sprintf("\t%s\n", entry.SamAccountName)
 			}
 		}
 
 		queryResult += "\nGENERIC_WRITE:\n"
 		for _, entry := range abusableAces {
-			if entry.GENERIC_WRITE == true {
+			if entry.GENERIC_WRITE {
 				queryResult += fmt.Sprintf("\t%s\n", entry.SamAccountName)
 			}
 		}
 
 		queryResult += "\nWRITE_OWNER:\n"
 		for _, entry := range abusableAces {
-			if entry.WRITE_OWNER == true {
+			if entry.WRITE_OWNER {
 				queryResult += fmt.Sprintf("\t%s\n", entry.SamAccountName)
 			}
 		}
 
 		queryResult += "\nWRITE_DACL:\n"
 		for _, entry := range abusableAces {
-			if entry.WRITE_DACL == true {
+			if entry.WRITE_DACL {
 				queryResult += fmt.Sprintf("\t%s\n", entry.SamAccountName)
 			}
 		}
 
 		queryResult += "\nFORCE_CHANGE_PASSWORD:\n"
 		for _, entry := range abusableAces {
-			if entry.FORCE_CHANGE_PASSWORD == true {
+			if entry.FORCE_CHANGE_PASSWORD {
 				queryResult += fmt.Sprintf("\t%s\n", entry.SamAccountName)
 			}
 		}
 
 		queryResult += "\nADD_MEMBER:\n"
 		for _, entry := range abusableAces {
-			if entry.ADD_MEMBER == true {
+			if entry.ADD_MEMBER {
 				queryResult += fmt.Sprintf("\t%s\n", entry.SamAccountName)
 			}
 		}
