@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/jcmturner/gokrb5/v8/client"
 	"github.com/jcmturner/gokrb5/v8/iana/etypeID"
@@ -35,20 +36,21 @@ func RequestTicket(targetUser string, cl *client.Client) (spnResult string) {
 		hex.Encode(cipherHex, tgt.EncPart.Cipher[16:])
 		ticket = fmt.Sprintf("$krb5tgs$%d$*%s$%s$%s*$%s$%s\n", tgt.EncPart.EType, tgt.SName.NameString[0], tgt.Realm, tgt.SName.NameString[0], checksumHex, cipherHex)
 	} else if tgt.EncPart.EType == etypeID.AES256_CTS_HMAC_SHA1_96 {
-		checksumHex := make([]byte, hex.EncodedLen(len(tgt.EncPart.Cipher[len(tgt.EncPart.Cipher)-12:])))
-		hex.Encode(checksumHex, tgt.EncPart.Cipher[len(tgt.EncPart.Cipher)-12:])
+		checksumHex := make([]byte, hex.EncodedLen(12))
+		hex.Encode(checksumHex, tgt.EncPart.Cipher[len(tgt.EncPart.Cipher)-12:len(tgt.EncPart.Cipher)])
 
-		cipherHex := make([]byte, hex.EncodedLen(len(tgt.EncPart.Cipher[:len(tgt.EncPart.Cipher)-12])))
+		cipherHex := make([]byte, hex.EncodedLen(len(tgt.EncPart.Cipher)-12))
 		hex.Encode(cipherHex, tgt.EncPart.Cipher[:len(tgt.EncPart.Cipher)-12])
-		fmt.Printf("$krb5tgs$%d$*%s$%s$%s*$%s$%s\n\n", tgt.EncPart.EType, tgt.SName.NameString[0], tgt.Realm, tgt.SName.NameString[0], checksumHex, cipherHex)
+		fmt.Printf("$krb5tgs$%d$%s$%s$*%s/%s*$%s$%s\n", tgt.EncPart.EType, tgt.SName.NameString[0], tgt.Realm, strings.ToLower(tgt.Realm), tgt.SName.NameString[0], checksumHex, cipherHex)
 
 	} else if tgt.EncPart.EType == etypeID.AES128_CTS_HMAC_SHA1_96 {
-		checksumHex := make([]byte, hex.EncodedLen(len(tgt.EncPart.Cipher[len(tgt.EncPart.Cipher)-12:])))
-		hex.Encode(checksumHex, tgt.EncPart.Cipher[len(tgt.EncPart.Cipher)-12:])
 
-		cipherHex := make([]byte, hex.EncodedLen(len(tgt.EncPart.Cipher[:len(tgt.EncPart.Cipher)-12])))
+		checksumHex := make([]byte, hex.EncodedLen(12))
+		hex.Encode(checksumHex, tgt.EncPart.Cipher[len(tgt.EncPart.Cipher)-12:len(tgt.EncPart.Cipher)])
+
+		cipherHex := make([]byte, hex.EncodedLen(len(tgt.EncPart.Cipher)-12))
 		hex.Encode(cipherHex, tgt.EncPart.Cipher[:len(tgt.EncPart.Cipher)-12])
-		fmt.Printf("$krb5tgs$%d$*%s$%s$%s*$%s$%s\n\n", tgt.EncPart.EType, tgt.SName.NameString[0], tgt.Realm, tgt.SName.NameString[0], checksumHex, cipherHex)
+		fmt.Printf("$krb5tgs$%d$%s$%s$*%s/%s*$%s$%s\n", tgt.EncPart.EType, tgt.SName.NameString[0], tgt.Realm, strings.ToLower(tgt.Realm), tgt.SName.NameString[0], checksumHex, cipherHex)
 
 	} else if tgt.EncPart.EType != etypeID.RC4_HMAC {
 		// Don't belive this would happen becuase we only offer rc4 encrpytion based on our config
