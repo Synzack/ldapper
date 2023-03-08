@@ -422,7 +422,7 @@ func main() {
 
 		Args: func(a *grumble.Args) {
 			a.String("module", "module to use (user, group, or nestedGroups)")
-			a.String("query", "object to query (username or group name)")
+			a.String("query", "object to query (username or group name). Multi-word queries such as 'domain admins' need to be in ticks or quotes.")
 		},
 
 		Run: func(c *grumble.Context) error {
@@ -447,7 +447,7 @@ func main() {
 						Globals.OutputAndLog(LogFile, "> "+"net user "+c.Args.String("query")+"\n", 0, 0, 0, true)
 					}
 					if Timestamping {
-						data := time.Now().Format("01/02/2006 03:04:05") + "\n\n"
+						data := time.Now().Format("01/02/2006 03:04:05") + "\n"
 						data += Queries.NetUserQuery(c.Args.String("query"), BaseDN, Conn)
 						Globals.OutputAndLog(LogFile, data, 0, 8, 0, false)
 					} else {
