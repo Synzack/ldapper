@@ -390,6 +390,8 @@ Ldapper now supports the use of timestamps in the shell! This can be called usin
 
 ```
 Not Connected » connect -u administrator@overwatch.local -p 'Password123!' -d 10.10.10.101 -s -t
+03/08/2023 02:56:20
+
 Bind successful, opening connection. Timestamping enabled.
  
 administrator@10.10.10.101:636(s) » net user hanzo
