@@ -590,7 +590,7 @@ func main() {
 					return nil
 				} else {
 					if Timestamping {
-						App.Println("Bind successful, opening connection. Timestamping enabled.\n ")
+						App.Println(time.Now().Format("01/02/2006 03:04:05") + "\n\nBind successful, opening connection. Timestamping enabled.\n ")
 					} else {
 						App.Println("Bind successful, opening connection.\n ")
 					}
@@ -604,7 +604,7 @@ func main() {
 					return nil
 				} else {
 					if Timestamping {
-						App.Println("Bind successful, opening connection. Timestamping enabled.\n ")
+						App.Println(time.Now().Format("01/02/2006 03:04:05") + "\n\nBind successful, opening connection. Timestamping enabled.\n ")
 					} else {
 						App.Println("Bind successful, opening connection.\n ")
 					}
@@ -630,7 +630,7 @@ func main() {
 					return nil
 				} else {
 					if Timestamping {
-						App.Println("Kerberos GSSAPI Bind succesful, opening connection. Timestamping enabled.\n ")
+						App.Println(time.Now().Format("01/02/2006 03:04:05") + "\n\nKerberos GSSAPI Bind successful, opening connection. Timestamping enabled.\n ")
 					} else {
 						App.Println("Kerberos GSSAPI Bind succesful, opening connection.\n ")
 					}
