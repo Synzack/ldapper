@@ -85,8 +85,7 @@ func ReturnGroupQuery(groupInput string, baseDN string, conn *ldap.Conn) (queryR
 		}
 		queryResult += "\n"
 	} else {
-		fmt.Printf("No results for \"%s\", check query.", groupInput)
-		queryResult = ("")
+		queryResult = fmt.Sprintf("No results for \"%s\", check query.\n", groupInput)
 	}
 
 	return

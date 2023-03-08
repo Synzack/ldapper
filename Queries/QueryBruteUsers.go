@@ -22,7 +22,7 @@ func BruteUserQuery(inputname string, server string, threads int, outputFile str
 	if outputFile != "" {
 		output, err = os.Create(outputFile)
 		if err != nil {
-			log.Fatalf("Can't open %v: %v", outputFile, err)
+			log.Printf("Can't open %v: %v\n\n", outputFile, err)
 		}
 		defer output.Close()
 	}
@@ -32,7 +32,7 @@ func BruteUserQuery(inputname string, server string, threads int, outputFile str
 	if inputname != "" {
 		input, err = os.Open(inputname)
 		if err != nil {
-			log.Fatalf("Can't open %v: %v", inputname, err)
+			log.Printf("Can't open %v: %v\n\n", inputname, err)
 		}
 		defer input.Close()
 

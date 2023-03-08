@@ -6,15 +6,44 @@
 
 A GoLang tool to enumerate and abuse LDAP. Made _simple_.
 
-Ldapper was created with for use in offensive security engagements for user enumeration, group enumeration, and more. Ldapper uses familiar "net" commands such as "net user" and "net group" to perform all its queries and its output follows the same conventions. Ldapper's user interface operates as a pseudo-interactive shell, where the user can input commands until exited. All traffic goes over the LDAP(S) protocol with a singular bind to help you better blend into the network.
+Ldapper was created with for use in offensive security engagements for user enumeration, group enumeration, and more. Ldapper uses familiar "net" commands such as "net user" and "net group" to perform all its queries and its output follows the same conventions. Ldapper's user interface operates as a interactive shell, where the user can input commands until exited. All traffic goes over the LDAP(S) protocol with a singular bind to help you better blend into the network. Ldapper is proxy aware and supports NTLM authentication with a user's hash. Additionally, this tool can perform modification actions within LDAP. 
 
-Ldapper is proxy aware and supports NTLM authentication with a user's hash. Additionally, this tool can perform modification actions within LDAP. More functionality is planned for later releases, but for now additional supported command functions are:
+## Whats New
+Updated 03/08/2023: Now in Technicolor!
 
-- Add Domain Computers
-- Add/Remove Arbitrary SPNs
-- Kerberoast
+Ldapper has had a quality of life update to improve user experience. The biggest being that Ldapper has been upgraded with the [Grumble](https://github.com/desertbit/grumble) Golang shell. This allows for a true shell experience including:
+- tab completing
+- command history with the arrow keys
+- more descriptive shell prompts
+- more robust help menu
+- colors
 
-This tool should be considered in its beta stages. Please report any bugs, issues, or functionality ideas for future releases.
+The new shell will display your user, where you are connected, and whether you are connected with LDAP (389) or LDAPS (636). You can also now disconnect from the user session without closing the application. 
+
+```
+❯ ./ldapper
+ __    ____   __   ____  ____  ____  ____  
+(  )  (    \ / _\ (  _ \(  _ \(  __)(  _ \ 
+/ (_/\ ) D (/    \ ) __/ ) __/ ) _)  )   / 
+\____/(____/\_/\_/(__)  (__)  (____)(__\_) 
+                          @SpaceManMitch96
+                                @Synzack21
+                                  @mfdooom
+
+Not Connected » connect -u administrator@overwatch.local -p 'Password123!' -d 10.10.10.101 -s
+Bind successful, opening connection.
+ 
+administrator@10.10.10.101:636(s) » disconnect
+Disconnecting from LDAP server at 10.10.10.101...
+
+Not Connected »  
+```
+
+In addition, the option for [timestamps](#timestamps) has been added for those who need more verbose output for activities such as reporting. 
+
+Note: With the new shell, strings with multiple words now need to be enclosed in single quotes (ex. net group 'domain admins').
+
+Please excuse our mess if there are any errors with the new shell. As always please let us know if you experience any!
 
 ## Table of Contents
 
@@ -40,6 +69,7 @@ This tool should be considered in its beta stages. Please report any bugs, issue
   - [Add SPN](#add-spn)
   - [Kerberoast](#kerberoast)
 - [Logging](#logging)
+- [Timestamps](#timestamps)
 - [Proxy Support](#proxy-support)
 - [Special Thanks](#special-thanks)
 
@@ -65,35 +95,33 @@ $ ./ldapper
                                 @Synzack21
                                   @mfdooom
 
-Usage of ./ldapper:
-  -H string
-        Use NTLM authentication
-  -b string
-        Brute force users from a file. Use -t to specify number of threads.
-  -dc string
-        IP address or FQDN of target DC
-  -h    Display help menu
-  -k    Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME)
-  -o string
-        Log file
-  -p string
-        Password
-  -s    Bind using LDAPS
-  -socks4 string
-        SOCKS4 Proxy Address (ip:port)
-  -socks4a string
-        SOCKS4A Proxy Address (ip:port)
-  -socks5 string
-        SOCKS5 Proxy Address (ip:port)
-  -t int
-        Number of threads to use. Only used for user enumeration. (default 4)
-  -u string
-        Username (username@domain)
-Examples:
-        With Password:  ./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s
-        With Hash:      ./ldapper -u <username@domain> -H <hash> -dc <ip/FQDN> -s
-        With Kerberos:  ./ldapper -u <username@domain> -k -dc <ip/FQDN> -s
-        User Enum:      ./ldapper -b <wordlist> -dc <ip/FQDN> -s -t <threads>
+
+Enumerate and abuse LDAP. Made simple
+
+Commands:
+  clear  clear the screen
+  exit   exit the shell
+  help   use 'help [command]' for command help
+
+Initialize/Deinitialize:
+  connect     Connect to a LDAP server
+  disconnect  Close the LDAP connection
+
+Ldapper Commands:
+  addComputer  Add a computer to the domain
+  roast        Kerberoast a user with an SPN
+  spn          Add or remove a SPN on a user account
+
+Ldapper Enumeration:
+  brute  Brute force users from a file. No authentication needed.
+
+Ldapper Queries:
+  dacl     Query the DACL of a target object
+  getspns  Query all user accounts with an SPN
+  groups   Query the groups for a target user
+  mquota   Query the machine account quota of the domain
+  net      Run net commands
+  passpol  Query the password policy of the domain
 ```
 
 # LDAPS Support
@@ -107,7 +135,7 @@ Ldapper supports the ability to bind to LDAP using either unencrypted LDAP on po
 Ldapper can be used with a username and password. This is the most common method of authentication. The username format follows the below covention:
 
 ```
-$ ./ldapper -u 'hanzo@overwatch.local' -P "Password123!" -dc 10.10.10.101 -s
+Not Connected » connect -u 'hanzo@overwatch.local' -P "Password123!" -d 10.10.10.101 -s
 ```
 
 ## NTLM
@@ -115,15 +143,16 @@ $ ./ldapper -u 'hanzo@overwatch.local' -P "Password123!" -dc 10.10.10.101 -s
 Ldapper can also authenticate with a user's NTLM hash. This method can be used with the `-H` flag.
 
 ```
-$ ./ldapper -u 'hanzo@overwatch.local' -H OOGNKVJB2TRCYLD26H4DVPF3KBP0SG03 -dc 10.10.10.101 -s
+Not Connected » connect -u 'hanzo@overwatch.local' -H OOGNKVJB2TRCYLD26H4DVPF3KBP0SG03 -d 10.10.10.101 -s
 ```
 
 ## Kerberos
 
-Ldapper can also authenticate using a CCache file specefied in the KRB5CCNAME enviroment variable with the `-k` flag.
+Ldapper can also authenticate using a CCache file specefied in the KRB5CCNAME enviroment variable with the `-k` flag. The variable needs to be set when Ldapper is initialized. 
 
 ```
-$ ./ldapper -u 'hanzo@overwatch.local' -k -dc 10.10.10.101 -s
+KRB5CCNAME=hanzo.ccache ./ldapper
+Not Connected » ./connect -u 'hanzo@overwatch.local' -k -d 10.10.10.101 -s
 ```
 
 # Query Modules
@@ -141,7 +170,7 @@ The command `net user` will information on a specified user in the domain, minus
 <sub>\*Note that the output in the "group" queries will return the "(Group)" label to distinguish users and groups. This is not part of the group name. Additionally, any groups with spaces in them will be wrapped in single quotes.</sub>
 
 ```
-> net user hanzo
+administrator@10.10.10.101:636(s) » net user hanzo
 
 User Information - hanzo:
 -------------------------------------------------------------------------------
@@ -160,7 +189,7 @@ Mail:                   hanzo@overwatch.local
 ```
 
 ```
-> net group domain admins
+administrator@10.10.10.101:636(s) » net group domain admins
 
 Primary Group Members
 -------------------------------------------------------------------------------
@@ -169,7 +198,7 @@ Key Admins (Group)       Administrator
 ```
 
 ```
-> net nestedGroups domain admins
+administrator@10.10.10.101:636(s) » net nestedGroups domain admins
 
 Primary Group Members
 -------------------------------------------------------------------------------
@@ -195,7 +224,7 @@ The `groups` module pulls the group memberships for an individual user. The synt
 - `groups <targetUser>`
 
 ```
-> groups hanzo
+administrator@10.10.10.101:636(s) » groups hanzo
 
 Group Memberships - hanzo:
 -------------------------------------------------------------------------------
@@ -210,7 +239,7 @@ The `getspns` module pulls all domain users with an SPN set. Syntax is as follow
 - `getspns`
 
 ```
-> getspns
+administrator@10.10.10.101:636(s) » getspns
 
 SPN                     Username                PasswordLastSet                 LastLogon                       Delegation
 CIFS/AZRWAPPS1000002    LIDIA_ELLIOTT           2022-07-24 21:07:52 -0400 EDT   2022-07-24 21:08:17 -0400 EDT   unconstrained
@@ -226,7 +255,7 @@ This module queries for the machine account quota of the domain. Syntax is as fo
 - `mquota`
 
 ```
-> mquota
+administrator@10.10.10.101:636(s) » mquota
 Machine Account Quota: 10
 ```
 
@@ -237,7 +266,7 @@ This module queries for the password policy for the domain. Syntax is as follows
 - `passpol`
 
 ```
-> passpol
+administrator@10.10.10.101:636(s) » passpol
 
 Minimum Password Length:        8
 Password History Length:        24
@@ -253,10 +282,10 @@ Password Complexity:            DOMAIN_PASSWORD_COMPLEX
 
 This module queries for abusable ACES within a target object's DACL. Syntax is as follows:
 
--`dacl <target object>`
+- `dacl <target object>`
 
 ```
-> dacl administrator
+administrator@10.10.10.101:636(s) » dacl administrator
 
 GENERIC_ALL:
 	System (Local System)
@@ -290,14 +319,7 @@ ADD_MEMBER:
 Ldapper also can brute force user enumeration through unauthenticated LDAP querries. Found users can also be exported to a file for further enumeration or testing.
 
 ```
-$ ./ldapper -b users.txt -dc 10.10.10.101 -s -t 10 -o FoundUsers.txt
- __    ____   __   ____  ____  ____  ____
-(  )  (    \ / _\ (  _ \(  _ \(  __)(  _ \
-/ (_/\ ) D (/    \ ) __/ ) __/ ) _)  )   /
-\____/(____/\_/\_/(__)  (__)  (____)(__\_)
-                          @SpaceManMitch96
-                                @Synzack21
-                                  @mfdooom
+Not Connected » brute -f users.txt -d 10.10.10.101 -t 10 -o FoundUsers.txt
 
 [+] Found user: hanzo
 [+] Found user: tracer
@@ -318,7 +340,7 @@ Administrator
 This module allows a user with the appropriate permissions to add a domain computer account to LDAP with a randomized 15 character alphanumeric password. This can be paired with the default machine account quota of 10, where any user can add up to 10 machine accounts.
 
 ```
-> addComputer ldapper$
+administrator@10.10.10.101:636(s) » addComputer ldapper$
 Successfully created computer account "ldapper$" with password "mT4lyPn6fh3T8XH"
 ```
 
@@ -330,12 +352,12 @@ This module allows the addition of an arbitrary SPN to the target user. This req
 - `spn delete <targetUser> <spn value>`
 
 ```
-> spn add hanzo blah/blah
+administrator@10.10.10.101:636(s) » spn add hanzo blah/blah
 Successfully added SPN: "blah/blah" for user "hanzo"
 ```
 
 ```
-> spn delete hanzo blah/blah
+administrator@10.10.10.101:636(s) » spn delete hanzo blah/blah
 Successfully deleted SPN: "blah/blah" for user "hanzo"
 ```
 
@@ -346,7 +368,7 @@ The `roast` module will request and print the service ticket encrypted with the 
 - `roast <encryption type (rc4 or aes)> <user>`
 
 ```
-> roast rc4 LIDIA_ELLIOT
+administrator@10.10.10.101:636(s) » roast rc4 LIDIA_ELLIOT
 
 $krb5tgs$23$*LIDIA_ELLIOT$RANGE.COM$LIDIA_ELLIOT*$31d99685e614b96bb9fab3a534f3a68d$8cfae8a06c390b037bc6c1e4200de88e2d4320b189c8e58dbfb3579b96db0b6afc6645c082d3067e9ba07259cc23f3b02e8c28e02cb90ae29edeedb91c7f02e7a7700d82dc0a0a69081357e37d0db75a224d5f6b4ac61f1bad707eac16c83dae44e0d85e941e90205d7d38f374cd6796b9733bc9e2d27a8588312cb08b0323c40a221b2204eb4eb1af75111ce8b75aa5ebb0b765e1a28f6103a54f2e72b8b6cebb73c0997cc2de4285f462e5d91d608ef628fee624e490e17441bb5b8d9a96e1680d92f151aa12296c3e4370b1ce6a1209b56b7ca1ee52022442db642595db9474c76169e2be5fd4d2e5af13caa61958e8466ac2c021a9ea61ca1857c4463ccfdd65eec6eef3f06c12178703d467e76246f3b6ae5f3248e93d4e58b8ce320a1f25e0bfa683ac014c047105d5030f2d1caea9243bd0ded2009ae6e79122e38e49a81747a93f98ba2557671d48da09fa6475e3d4373dee80f705a482aded93abeab77b337c47d904292dc0f08c89fcb009dd09e101a8a71c3060d9ebc2620b331454e971d51fa9fdab9b8b7f42cb606ac0ca6a85852912ba91266c9e1fcaf33b6cef49fccd490526509955dc5bf6744c9787271819e86f8cb18a999a85c37503d837b10a434ab1ae717f82fc139ba60989b70934a3a6eb62a2ad7dc3af7b70e120b45233059c4606227adc11a86be8cd688b7a2984a782c723f4fb018e6e068e3667a697c6bb761f1cc90cdee0ed51fd2904c89766105976e1ef2d33714f31dbd71ae2a56d674d9998196c160b8847236e77997ebff66d6bf8605c59d04949e1e16b6f60429db005f83bd8719a6e952dc56166d681053a7b7e1461cc3d6b408a21ee6cbe907adacc7650df0e5188d4e1279516f934e97e295e6501dfb20462e0d59edf42a391f7dbf39dcc791bc97c7d77bf66146df570cfccdd92694581232a823ba0174045f4b37343ceb888641c5ccf3f6e10e35957d07974f39fd7b0c5018eb5707f4556b1f73a47c0e081ecdca708d5da866cdaf8ca7131ff0fd9a6a58db6073918368bdc8b2635e3ee2e016136e2cea53fd1f717dd0a86dfdc050f6e46bbd2913c3df5f98fd54784bcee5d74ad8728d8dd1758a5034a326b6b28a2fc1e159e3fe4c0311af57d67c58099932b452921224c1d957626e1603bcd2bc77c8fce394dc0026f289398c9191092075f598055f3b2aeaef83b0b09f55a97bce331c5e4e2904bafbd84bb62d2bfcf9d817f29fe0c67c9bbae7c081c6ea22a20edac1db8588f9a42b636c59f7f6388d5607b243ed873fee7bff9f839c892bf7685fdb9f8fabd90fa3bfa14d13d8c4cc0dcf8865917ea1c4df3634922714bdca305ae6e3c87c34e2b949af7cf3cecd7b4545332088084dcdd3c221a9d75497fdca897
 
@@ -359,28 +381,48 @@ $krb5tgs$23$*LIDIA_ELLIOT$RANGE.COM$LIDIA_ELLIOT*$31d99685e614b96bb9fab3a534f3a6
 Currently, Ldapper supports logging of stdout to a specified log file. This can be called using the `-o` flag. The log file will be created in the current directory. If the log file already exists, it will be appended to.
 
 ```
-$ ./ldapper -u hanzo@overwatch.local -P "Password123!" -dc 10.10.10.101 -s -o ldapper.log
+Not Connected » connect -u hanzo@overwatch.local -P "Password123!" -d 10.10.10.101 -s -o ldapper.log
+```
+
+# Timestamps
+
+Ldapper now supports the use of timestamps in the shell! This can be called using the `-t` flag. The connection will specify that timestamps are enabled and append it to the top of your results. Log files will also contain the timestamps when specified. 
+
+```
+Not Connected » connect -u administrator@overwatch.local -p 'Password123!' -d 10.10.10.101 -s -t
+Bind successful, opening connection. Timestamping enabled.
+ 
+administrator@10.10.10.101:636(s) » net user hanzo
+03/08/2023 02:56:32
+
+User Information - hanzo:
+-------------------------------------------------------------------------------
+User Name:              hanzo
+Full Name:              Hanzo Shimada
+Comment:                Test Description
+User Account Control:   Enabled, Password Doesn't Expire
+                        (If Enabled, Check Last Lockout Time)
+
+Last Lockout Time:
+Account Expires:        Never
+Password Last Set:      02/21/2021 03:33:12 PM
+Home Directory:         C:\Users\Home\Hanzo
+Last logon:             07/06/2022 03:40:39 PM
+Mail:                   hanzo@overwatch.local
 ```
 
 # Proxy Support
 
-Ldapper supports all SOCKS4, SOCKS4A, and SOCKS5 proxies. The proxy can be specified with the `-socks4`, `-socks4a`, and `-socks5` flags respectively. Proxy functionality is compatible with C2 frameworks such as Cobalt Strike.
+Ldapper supports all SOCKS4, SOCKS4A, and SOCKS5 proxies. The proxy can be specified with the `-4` (socks4), `-a` (socks4a), and `-5` (socks5) flags respectively. Proxy functionality is compatible with C2 frameworks such as Cobalt Strike.
 
 ```
-$ ./ldapper -u hanzo@overwatch.local -P "Password123!" -dc 10.10.10.101 -socks4 127.0.0.1:6666 -s
- __    ____   __   ____  ____  ____  ____
-(  )  (    \ / _\ (  _ \(  _ \(  __)(  _ \
-/ (_/\ ) D (/    \ ) __/ ) __/ ) _)  )   /
-\____/(____/\_/\_/(__)  (__)  (____)(__\_)
-                          @SpaceManMitch96
-                                @Synzack21
-                                  @mfdooom
+Not Connected » connect -u hanzo@overwatch.local -P "Password123!" -d 10.10.10.101 -4 127.0.0.1:6666 -s
 
 Connecting with proxy: 127.0.0.1:6666
 
-Bind successful, dropping into shell.
-
->
+Bind successful, opening connection.
+ 
+hanzo@10.10.10.101:636(s) »
 ```
 
 # Special Thanks

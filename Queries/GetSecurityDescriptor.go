@@ -66,6 +66,8 @@ func GetSecurityDescriptor(input string, baseDN string, conn *ldap.Conn) (queryR
 				queryResult += fmt.Sprintf("\t%s\n", entry.SamAccountName)
 			}
 		}
+	} else {
+		queryResult = "No results for input object.\n"
 	}
 	return
 }

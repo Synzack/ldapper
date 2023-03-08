@@ -1,374 +1,271 @@
 package main
 
 import (
-	"bufio"
 	"crypto/tls"
-	"flag"
 	"fmt"
 	"io"
 	"ldapper/Commands"
 	"ldapper/Globals"
 	"ldapper/Queries"
-	"log"
 	"net"
 	"os"
 	"strings"
 	"text/tabwriter"
 	"time"
 
+	"github.com/desertbit/grumble"
+	"github.com/fatih/color"
 	"github.com/go-ldap/ldap/v3"
 	"github.com/jcmturner/gokrb5/v8/client"
 	"h12.io/socks"
 )
 
-type FlagOptions struct {
-	upn      string
-	password string
-	ntlm     string
-	ccache   bool
-	dc       string
-	scheme   bool
-	logFile  string
-	socks4   string
-	socks4a  string
-	socks5   string
-	brute    string
-	threads  int
-	help     bool
-}
+var App *grumble.App
 
-func options() *FlagOptions {
-	upn := flag.String("u", "", "Username (username@domain)")
-	password := flag.String("p", "", "Password")
-	ntlm := flag.String("H", "", "Use NTLM authentication")
-	ccache := flag.Bool("k", false, "Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME)")
-	dc := flag.String("dc", "", "IP address or FQDN of target DC")
-	scheme := flag.Bool("s", false, "Bind using LDAPS")
-	logFile := flag.String("o", "", "Log file")
-	socks4 := flag.String("socks4", "", "SOCKS4 Proxy Address (ip:port)")
-	socks4a := flag.String("socks4a", "", "SOCKS4A Proxy Address (ip:port)")
-	socks5 := flag.String("socks5", "", "SOCKS5 Proxy Address (ip:port)")
-	brute := flag.String("b", "", "Brute force users from a file. Use -t to specify number of threads.")
-	threads := flag.Int("t", 4, "Number of threads to use. Only used for user enumeration.")
-	help := flag.Bool("h", false, "Display help menu")
+var Connected bool
 
-	flag.Parse()
-	return &FlagOptions{
-		upn:      *upn,
-		password: *password,
-		ntlm:     *ntlm,
-		ccache:   *ccache,
-		dc:       *dc,
-		scheme:   *scheme,
-		logFile:  *logFile,
-		socks4:   *socks4,
-		socks4a:  *socks4a,
-		socks5:   *socks5,
-		brute:    *brute,
-		threads:  *threads,
-		help:     *help}
+var Conn *ldap.Conn
+var ProxyConn net.Conn
+var Err error
+var Port string
+var BaseDN string
 
-}
+var Cl *client.Client
+var SocksType int
+var SocksAddress string
+var ProxyDial func(string, string) (net.Conn, error)
+
+var Domain string
+var Username string
+var Target []string
+var DC string
+var Password string
+var NTLM string
+var Ccache bool
+var LogFile string
+var LDAPS bool
+var Timestamping bool
 
 func main() {
-	opt := options() //get options from command line
+	App = grumble.New(&grumble.Config{
+		Name:           "Ldapper",
+		Description:    "Enumerate and abuse LDAP. Made simple",
+		PromptColor:    color.New(color.FgCyan, color.Bold),
+		ASCIILogoColor: color.New(color.FgCyan, color.Bold),
+		//HelpHeadlineUnderline: true,
+		HelpHeadlineColor: color.New(color.FgCyan, color.Bold),
+	})
 
-	const header = " __    ____   __   ____  ____  ____  ____  \n" +
-		"(  )  (    \\ / _\\ (  _ \\(  _ \\(  __)(  _ \\ \n" +
-		"/ (_/\\ ) D (/    \\ ) __/ ) __/ ) _)  )   / \n" +
-		"\\____/(____/\\_/\\_/(__)  (__)  (____)(__\\_) \n" +
-		"                          @SpaceManMitch96\n" +
-		"                                @Synzack21\n" +
-		"                                  @mfdooom\n\n"
+	App.SetPrintASCIILogo(func(a *grumble.App) {
+		a.Println(" __    ____   __   ____  ____  ____  ____  ")
+		a.Println("(  )  (    \\ / _\\ (  _ \\(  _ \\(  __)(  _ \\ ")
+		a.Println("/ (_/\\ ) D (/    \\ ) __/ ) __/ ) _)  )   / ")
+		a.Println("\\____/(____/\\_/\\_/(__)  (__)  (____)(__\\_) ")
+		a.Println("                          @SpaceManMitch96")
+		a.Println("                                @Synzack21")
+		a.Println("                                  @mfdooom\n")
 
-	fmt.Print(header)
+	})
+	App.SetPrompt("Not Connected » ")
 
-	var conn *ldap.Conn
-	var proxyConn net.Conn
-	var err error
-	var domain string
-	var username string
-	var target []string
-	var cl *client.Client
-	var socksType int
-	var socksAddress string
-	var proxyDial func(string, string) (net.Conn, error)
+	App.AddCommand(&grumble.Command{
+		Name:      "brute",
+		Help:      "Brute force users from a file. No authentication needed.",
+		HelpGroup: "Ldapper Enumeration:",
 
-	target = strings.Split(opt.upn, "@")
+		Flags: func(f *grumble.Flags) {
+			f.String("d", "dc", "", "IP address or FQDN of target DC")
+			f.String("f", "file", "", "Input file of usernames")
+			f.Int("t", "threads", 4, "Number of threads")
+			f.String("o", "output file", "", "Name of outputfile")
+		},
 
-	// Did the user supply the username correctly <user@domain>?
-	if len(target) == 1 {
-		opt.help = true
-	} else {
-		username = target[0]
-		domain = target[1]
-	}
-
-	// if required flags aren't set, print help
-	// if opt.brute is set, we don't need a username
-	if opt.brute == "" && (username == "" || opt.dc == "" || (opt.password == "" && opt.ntlm == "" && !opt.ccache) || opt.help) {
-		flag.Usage()
-		fmt.Println("Examples:")
-		fmt.Println("\tWith Password: \t./ldapper -u <username@domain> -p <password> -dc <ip/FQDN> -s")
-		fmt.Println("\tWith Hash: \t./ldapper -u <username@domain> -H <hash> -dc <ip/FQDN> -s")
-		fmt.Println("\tWith Kerberos: \t./ldapper -u <username@domain> -k -dc <ip/FQDN> -s")
-		fmt.Println("\tUser Enum: \t./ldapper -b <wordlist> -dc <ip/FQDN> -s -t <threads>")
-		os.Exit(1)
-	}
-
-	//Initialize connection with proxy if specified
-	if opt.socks4 != "" || opt.socks4a != "" || opt.socks5 != "" {
-		var port string
-		if opt.scheme {
-			port = "636"
-		} else {
-			port = "389"
-		}
-
-		if opt.socks4 != "" {
-			//set socks to socks4
-			socksType = socks.SOCKS4
-			socksAddress = opt.socks4
-		} else if opt.socks4a != "" {
-			//set socks to socks4a
-			socksType = socks.SOCKS4A
-			socksAddress = opt.socks4a
-		} else if opt.socks5 != "" {
-			//set socks to socks5
-			socksType = socks.SOCKS5
-			socksAddress = opt.socks5
-		}
-
-		// check for socks options
-		proxyDial = socks.DialSocksProxy(socksType, socksAddress)
-		if err != nil {
-			log.Fatal("Cannot initialize proxy.")
-		}
-
-		proxyConn, err = proxyDial("tcp", fmt.Sprintf("%s:%s", opt.dc, port))
-		if err != nil {
-			log.Fatal("Cannot connect through proxy.\n", err)
-		}
-
-		if opt.scheme {
-			proxyTLS := tls.Client(proxyConn, &tls.Config{InsecureSkipVerify: true})
-			conn = ldap.NewConn(proxyTLS, opt.scheme)
-		} else {
-			conn = ldap.NewConn(proxyConn, opt.scheme)
-		}
-
-		conn.Start()
-		fmt.Printf("Connecting with proxy: %s\n\n", socksAddress)
-	} else { //Initialize without proxy
-		if opt.scheme {
-			ldapsAddress := fmt.Sprintf("%s:%d", opt.dc, 636)
-			conn, err = ldap.DialTLS("tcp", ldapsAddress, &tls.Config{InsecureSkipVerify: true})
-			if err != nil {
-				log.Fatal(err)
+		Run: func(c *grumble.Context) error {
+			if c.Flags.String("dc") == "" || c.Flags.String("file") == "" {
+				App.Println("Domain controller and input file must be specified. See \"help brute\" for details.\n")
+				return nil
 			}
+			Queries.BruteUserQuery(c.Flags.String("file"), c.Flags.String("dc"), c.Flags.Int("threads"), c.Flags.String("output file"), LDAPS)
+			return nil
+		},
+	})
 
-		} else {
-			conn, err = ldap.DialURL(fmt.Sprintf("ldap://%s:%d", opt.dc, 389))
-			if err != nil {
-				log.Fatal(err)
+	App.AddCommand(&grumble.Command{
+		Name:      "disconnect",
+		Help:      "Close the LDAP connection",
+		HelpGroup: "Initialize/Deinitialize:",
+
+		Run: func(c *grumble.Context) error {
+			if Connected {
+				App.Printf("Disconnecting from LDAP server at %s...\n\n", DC)
+				Conn.Close()
+				App.SetPrompt("Not Connected » ")
+				Connected = false
+
+				return nil
+			} else {
+				App.Println("No active LDAP connection. Please see the \"connect\" command to initialize.\n")
+				return nil
 			}
-		}
-	}
+		},
+	})
 
-	defer conn.Close() //Close connection when done
+	App.AddCommand(&grumble.Command{
+		Name:      "dacl",
+		Help:      "Query the DACL of a target object",
+		HelpGroup: "Ldapper Queries:",
 
-	if opt.brute != "" {
-		// send file name to BruteUSerQuery
-		Queries.BruteUserQuery(opt.brute, opt.dc, opt.threads, opt.logFile, opt.scheme)
-		return
-	}
+		Args: func(a *grumble.Args) {
+			a.String("target", "target object")
+		},
 
-	// if password option set
-	if opt.password != "" {
-		err = conn.Bind(opt.upn, opt.password)
-		if err != nil {
-			log.Fatal(err)
-		} else {
-			fmt.Println("Bind successful, dropping into shell. ")
-		}
-	}
-
-	// if ntlm hash option set
-	if opt.ntlm != "" {
-		err = conn.NTLMBindWithHash(domain, username, opt.ntlm)
-		if err != nil {
-			fmt.Print("test\n")
-			log.Fatal(err)
-		} else {
-			fmt.Println("Bind successful, dropping into shell. ")
-		}
-	}
-
-	// if kerberos option set
-	if opt.ccache {
-		cl = Globals.GetKerberosClient(domain, opt.dc, username, opt.password, opt.ntlm, opt.ccache, "aes", socksAddress, socksType)
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		machineName := Globals.GetMachineHostname(opt.dc, proxyDial)
-
-		spnTarget := fmt.Sprintf("ldap/%s", machineName)
-
-		_, err = conn.GSSAPICCBindCCache(cl, spnTarget)
-		if err != nil {
-			log.Fatal(err)
-		} else {
-			fmt.Println("Kerberos GSSAPI Bind succesful, dropping into shell. ")
-		}
-	}
-
-	baseDN := Globals.GetBaseDN(opt.dc, conn)
-
-	// Create impromptu shell for input
-	reader := bufio.NewReader(os.Stdin)
-
-	for { //Loop forever
-		fmt.Print("\n> ")
-		userQuery, err := reader.ReadString('\n')            //Read user input
-		userQuery = strings.Replace(userQuery, "\n", "", -1) //Remove newline
-		userQuery = strings.Replace(userQuery, "\r", "", -1) //Needed to remove newline in Windows
-
-		if err != nil { //Check for errors
-			fmt.Fprintln(os.Stderr, err)
-		}
-
-		if opt.logFile != "" {
-			Globals.OutputAndLog(opt.logFile, "> "+userQuery, 0, 0, 0, true)
-		}
-
-		if userQuery != "exit" {
-			// parse shell input
-			userInput := strings.SplitN(userQuery, " ", 2)
-			module := userInput[0]
-
-			switch module {
-			case "help":
-				const help = "Available commands:\n" +
-					"Queries:\n" +
-					"\tnet user <username>\n" +
-					"\tgroups <user>\n" +
-					"\tnet group <group>\n" +
-					"\tnet nestedGroups <group> (OPSEC Warning: Expensive LDAP query)\n" +
-					"\tdacl <target object> (Get vulnerable aces within the target's DACL)\n" +
-					"\tgetspns (Get All User SPNs)\n" +
-					"\tmquota (Get Machine Account Quota)\n" +
-					"\tpasspol (Get Domain Password Policy)\n" +
-					"Commands:\n" +
-					"\taddComputer <computerName$>  (Requires LDAPS)\n" +
-					"\tspn <add/delete> <targetUser> <spn>\n" +
-					"\troast <rc4/aes> <targetUser>\n" +
-					"Exit:\n" +
-					"\texit"
-				fmt.Println(help)
-			case "groups":
-
-				if len(userInput) == 1 {
-					fmt.Println("Incorrect number of arguments. Usage: groups <argument>")
-					break
+		Run: func(c *grumble.Context) error {
+			if Connected {
+				if LogFile != "" {
+					Globals.OutputAndLog(LogFile, "> "+"dacl "+c.Args.String("target")+"\n", 0, 0, 0, true)
 				}
-				arguments := userInput[1]
-
-				data := Queries.GroupsQuery(arguments, baseDN, conn)
-				Globals.OutputAndLog(opt.logFile, data, 12, 8, 4, false)
-
-			case "net":
-				if len(userInput) == 1 {
-					fmt.Println("Incorrect number of arguments. Usage: net <option> <argument>")
-					break
-				}
-				arguments := userInput[1]
-
-				// if the length of the options does not == 2, break, show error
-				netArgs := strings.SplitN(arguments, " ", 2)
-
-				if len(netArgs) != 2 {
-					fmt.Println("Incorrect number of arguments. Usage: net <user/group> <input>")
-					break
+				if Timestamping {
+					data := time.Now().Format("01/02/2006 03:04:05") + "\n\n"
+					data += Queries.GetSecurityDescriptor(c.Args.String("target"), BaseDN, Conn)
+					Globals.OutputAndLog(LogFile, data, 6, 8, 4, false)
+				} else {
+					data := Queries.GetSecurityDescriptor(c.Args.String("target"), BaseDN, Conn)
+					Globals.OutputAndLog(LogFile, data, 6, 8, 4, false)
 				}
 
-				option, arg := netArgs[0], netArgs[1]
+				return nil
+			} else {
+				App.Println("No active LDAP connection. Please see the \"connect\" command to initialize.\n")
+				return nil
+			}
+		},
+	})
 
-				// Switch case for net search options
-				switch option {
-				case "group":
-					data := Queries.ReturnGroupQuery(arg, baseDN, conn)
-					Globals.OutputAndLog(opt.logFile, data, 12, 8, 4, false)
+	App.AddCommand(&grumble.Command{
+		Name:      "passpol",
+		Help:      "Query the password policy of the domain",
+		HelpGroup: "Ldapper Queries:",
 
-				case "user":
-					data := Queries.NetUserQuery(arg, baseDN, conn)
-					Globals.OutputAndLog(opt.logFile, data, 0, 8, 0, false)
+		Run: func(c *grumble.Context) error {
+			if Connected {
+				if LogFile != "" {
+					Globals.OutputAndLog(LogFile, "> "+"passpol"+"\n", 0, 0, 0, true)
+				}
+				if Timestamping {
+					result := time.Now().Format("01/02/2006 03:04:05") + "\n"
+					result += Queries.GetPwdPolicy(BaseDN, Conn)
+					Globals.OutputAndLog(LogFile, result, 0, 8, 0, false)
+				} else {
+					result := Queries.GetPwdPolicy(BaseDN, Conn)
+					Globals.OutputAndLog(LogFile, result, 0, 8, 0, false)
+				}
 
-				case "nestedGroups":
-					data := Queries.ReturnNestedGroupQuery(arg, baseDN, conn)
-					Globals.OutputAndLog(opt.logFile, data, 12, 8, 4, false)
+				return nil
+			} else {
+				App.Println("No active LDAP connection. Please see the \"connect\" command to initialize.\n")
+				return nil
+			}
+		},
+	})
 
+	App.AddCommand(&grumble.Command{
+		Name:      "mquota",
+		Help:      "Query the machine account quota of the domain",
+		HelpGroup: "Ldapper Queries:",
+
+		Run: func(c *grumble.Context) error {
+			if Connected {
+				if LogFile != "" {
+					Globals.OutputAndLog(LogFile, "> "+"mquota"+"\n", 0, 0, 0, true)
+				}
+				if Timestamping {
+					result := time.Now().Format("01/02/2006 03:04:05") + "\n\n"
+					result += Queries.GetMachineQuota(BaseDN, Conn)
+					Globals.OutputAndLog(LogFile, result, 0, 0, 0, false)
+				} else {
+					result := Queries.GetMachineQuota(BaseDN, Conn)
+					Globals.OutputAndLog(LogFile, result, 0, 0, 0, false)
+				}
+
+				return nil
+			} else {
+				App.Println("No active LDAP connection. Please see the \"connect\" command to initialize.\n")
+				return nil
+			}
+		},
+	})
+
+	App.AddCommand(&grumble.Command{
+		Name:      "roast",
+		Help:      "Kerberoast a user with an SPN",
+		HelpGroup: "Ldapper Commands:",
+
+		Args: func(a *grumble.Args) {
+			a.String("algorithm", "rc4/aes")
+			a.String("target", "target user")
+		},
+
+		Run: func(c *grumble.Context) error {
+			if Connected {
+				if LogFile != "" {
+					Globals.OutputAndLog(LogFile, "> "+"roast "+c.Args.String("algorithm")+" "+c.Args.String("target")+"\n", 0, 0, 0, true)
+				}
+
+				switch c.Args.String("algorithm") {
+				case "rc4", "aes":
+					etype, roastuser := c.Args.String("algorithm"), c.Args.String("target")
+					Cl = Globals.GetKerberosClient(Domain, DC, Username, Password, NTLM, Ccache, etype, SocksAddress, SocksType)
+
+					if Timestamping {
+						result := time.Now().Format("01/02/2006 03:04:05") + "\n\n"
+						result += Commands.RequestTicket(roastuser, Cl)
+						Globals.OutputAndLog(LogFile, result, 0, 0, 0, false)
+					} else {
+						result := Commands.RequestTicket(roastuser, Cl)
+						Globals.OutputAndLog(LogFile, result, 0, 0, 0, false)
+					}
+					return nil
 				default:
-					fmt.Println("Invalid search. Please use:")
-					fmt.Println("\tnet group <group>")
-					fmt.Println("\tnet nestedGroups <group>")
-					fmt.Println("\tnet user <user>")
-				} // end 'net' module switch
-			case "addComputer":
-				if len(userInput) == 1 {
-					fmt.Println("Incorrect number of arguments. Usage: addComputer <computerName$>")
-					break
+					App.Println("Not a valid algorithm. Please use \"rc4\" or \"aes\".\n")
+					return nil
 				}
-				arguments := userInput[1]
+			} else {
+				App.Println("No active LDAP connection. Please see the \"connect\" command to initialize.\n")
+				return nil
+			}
+		},
+	})
 
-				if !strings.HasSuffix(arguments, "$") {
-					fmt.Println("Error in computerName. Ensure computername ends with '$'")
-					break
+	App.AddCommand(&grumble.Command{
+		Name:      "getspns",
+		Help:      "Query all user accounts with an SPN",
+		HelpGroup: "Ldapper Queries:",
+
+		Run: func(c *grumble.Context) error {
+			var spnOutput string
+			var spnLog string
+			var f *os.File
+			var multiOut io.Writer
+
+			if Connected {
+				var result string
+				if Timestamping {
+					result = time.Now().Format("01/02/2006 03:04:05") + "\n\n"
+					result += Queries.GetUserSPNs(BaseDN, Conn)
+				} else {
+					result = Queries.GetUserSPNs(BaseDN, Conn)
 				}
 
-				result := Commands.AddComputerAccount(arguments, baseDN, conn)
-				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
-
-			case "spn":
-				if len(userInput) == 1 {
-					fmt.Println("Incorrect number of arguments. Usage: spn <add/delete> <targetUser> <spn>")
-					break
-				}
-				arguments := userInput[1]
-
-				// split arguments into 3
-				spnArgs := strings.SplitN(arguments, " ", 3)
-				if len(spnArgs) != 3 {
-					fmt.Println("Incorrect number of arguments. Usage: spn <add/delete> <targerUser> <spn/string>")
-					break
-				}
-				option, targetUser, spn := spnArgs[0], spnArgs[1], spnArgs[2]
-				switch option {
-				case "add":
-					result := Commands.AddSPN(targetUser, spn, baseDN, conn)
-					Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
-
-				case "delete":
-					result := Commands.DeleteSPN(targetUser, spn, baseDN, conn)
-					Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
-				}
-			case "getspns":
-				var spnOutput string
-				var spnLog string
-				var f *os.File
-				var multiOut io.Writer
-
-				result := Queries.GetUserSPNs(baseDN, conn)
-				//i tabwriter to format SPN output table
 				spnWriter := new(tabwriter.Writer)
 
-				// write to stdout and SPN Output File
-				if opt.logFile != "" {
+				if LogFile != "" {
+					Globals.OutputAndLog(LogFile, "> "+"getspns", 0, 0, 0, true)
+
 					spnOutput = fmt.Sprintf("spns-%s.txt", time.Now().Format("01-02-2006-03-04-05"))
-					f, err = os.Create(spnOutput)
-					if err != nil {
-						log.Fatal(err)
+					f, Err = os.Create(spnOutput)
+					if Err != nil {
+						App.Println(Err)
+						return nil
 					}
 
 					multiOut = io.MultiWriter(f, os.Stdout)
@@ -382,57 +279,392 @@ func main() {
 				spnWriter.Flush()
 				f.Close()
 
-				if opt.logFile != "" {
+				if LogFile != "" {
 					spnLog = fmt.Sprintf("Output written to %s\n", spnOutput)
 				}
 
-				Globals.OutputAndLog(opt.logFile, spnLog, 0, 0, 0, false)
+				Globals.OutputAndLog(LogFile, spnLog, 0, 0, 0, false)
 
-			case "roast":
-				if len(userInput) == 1 {
-					fmt.Println("Incorrect number of arguments. Usage: roast <rc4/aes> <targetUser>")
-					break
+				return nil
+			} else {
+				App.Println("No active LDAP connection. Please see the \"connect\" command to initialize.\n")
+				return nil
+			}
+		},
+	})
+
+	App.AddCommand(&grumble.Command{
+		Name:      "spn",
+		Help:      "Add or remove a SPN on a user account",
+		HelpGroup: "Ldapper Commands:",
+
+		Args: func(a *grumble.Args) {
+			a.String("argument", "add/delete")
+			a.String("target", "target user")
+			a.String("spn", "SPN to add or delete")
+		},
+
+		Run: func(c *grumble.Context) error {
+			if Connected {
+				switch c.Args.String("argument") {
+				case "add":
+					if LogFile != "" {
+						Globals.OutputAndLog(LogFile, "> "+"spn add "+c.Args.String("target")+" "+c.Args.String("spn")+"\n", 0, 0, 0, true)
+					}
+					if Timestamping {
+						result := time.Now().Format("01/02/2006 03:04:05") + "\n\n"
+						result += Commands.AddSPN(c.Args.String("target"), c.Args.String("spn"), BaseDN, Conn)
+						Globals.OutputAndLog(LogFile, result, 0, 0, 0, false)
+					} else {
+						result := Commands.AddSPN(c.Args.String("target"), c.Args.String("spn"), BaseDN, Conn)
+						Globals.OutputAndLog(LogFile, result, 0, 0, 0, false)
+					}
+
+				case "delete":
+					if LogFile != "" {
+						Globals.OutputAndLog(LogFile, "> "+"spn delete "+c.Args.String("target")+" "+c.Args.String("spn")+"\n", 0, 0, 0, true)
+					}
+					if Timestamping {
+						result := time.Now().Format("01/02/2006 03:04:05") + "\n\n"
+						result += Commands.DeleteSPN(c.Args.String("target"), c.Args.String("spn"), BaseDN, Conn)
+						Globals.OutputAndLog(LogFile, result, 0, 0, 0, false)
+					} else {
+						result := Commands.DeleteSPN(c.Args.String("target"), c.Args.String("spn"), BaseDN, Conn)
+						Globals.OutputAndLog(LogFile, result, 0, 0, 0, false)
+					}
+
+				default:
+					App.Println("Not a valid argument. Please use \"add\" or \"delete\"")
 				}
-				arguments := userInput[1]
+				return nil
+			} else {
+				App.Println("No active LDAP connection. Please see the \"connect\" command to initialize.\n")
+				return nil
+			}
+		},
+	})
 
-				// if the length of the options does not == 2, break, show error
-				roastArgs := strings.SplitN(arguments, " ", 2)
+	App.AddCommand(&grumble.Command{
+		Name:      "addComputer",
+		Help:      "Add a computer to the domain",
+		HelpGroup: "Ldapper Commands:",
 
-				if len(roastArgs) != 2 {
-					fmt.Println("Incorrect number of arguments. Usage: roast <rc4/aes> <targetUser>")
-					break
+		Args: func(a *grumble.Args) {
+			a.String("computerName", "machine name to add")
+		},
+
+		Run: func(c *grumble.Context) error {
+			if Connected {
+				if LogFile != "" {
+					Globals.OutputAndLog(LogFile, "> "+"addComputer "+c.Args.String("computerName")+"\n", 0, 0, 0, true)
+				}
+				if !strings.HasSuffix(c.Args.String("computerName"), "$") {
+					App.Println("Error in computerName. Ensure computerName ends with '$'")
+					return nil
+				}
+				if Timestamping {
+					result := time.Now().Format("01/02/2006 03:04:05") + "\n\n"
+					result += Commands.AddComputerAccount(c.Args.String("computerName"), BaseDN, Conn)
+					Globals.OutputAndLog(LogFile, result, 0, 0, 0, false)
+				} else {
+					result := Commands.AddComputerAccount(c.Args.String("computerName"), BaseDN, Conn)
+					Globals.OutputAndLog(LogFile, result, 0, 0, 0, false)
 				}
 
-				etype, roastuser := roastArgs[0], roastArgs[1]
+				return nil
 
-				cl = Globals.GetKerberosClient(domain, opt.dc, username, opt.password, opt.ntlm, opt.ccache, etype, socksAddress, socksType)
+			} else {
+				App.Println("No active LDAP connection. Please see the \"connect\" command to initialize.\n")
+				return nil
+			}
+		},
+	})
 
-				result := Commands.RequestTicket(roastuser, cl)
+	App.AddCommand(&grumble.Command{
+		Name:      "groups",
+		Help:      "Query the groups for a target user",
+		HelpGroup: "Ldapper Queries:",
 
-				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
-			case "mquota":
-				result := Queries.GetMachineQuota(baseDN, conn)
-				Globals.OutputAndLog(opt.logFile, result, 0, 0, 0, false)
+		Args: func(a *grumble.Args) {
+			a.String("username", "username to query group memberships for")
+		},
 
-			case "passpol":
-				result := Queries.GetPwdPolicy(baseDN, conn)
-				Globals.OutputAndLog(opt.logFile, result, 0, 8, 0, false)
-
-			case "dacl":
-				if len(userInput) == 1 {
-					fmt.Println("Incorrect number of arguments. Usage: dacl <target object>")
-					break
+		Run: func(c *grumble.Context) error {
+			if Connected {
+				if LogFile != "" {
+					Globals.OutputAndLog(LogFile, "> "+"groups "+c.Args.String("username")+"\n", 0, 0, 0, true)
 				}
-				arguments := userInput[1]
+				if len(c.Args.String("username")) == 1 {
+					App.Println("Incorrect number of arguments. Usage: groups <username>")
+					return nil
+				}
+				if Timestamping {
+					data := time.Now().Format("01/02/2006 03:04:05") + "\n\n"
+					data += Queries.GroupsQuery(c.Args.String("username"), BaseDN, Conn)
+					Globals.OutputAndLog(LogFile, data, 12, 8, 4, false)
+				} else {
+					data := Queries.GroupsQuery(c.Args.String("username"), BaseDN, Conn)
+					Globals.OutputAndLog(LogFile, data, 12, 8, 4, false)
+				}
 
-				data := Queries.GetSecurityDescriptor(arguments, baseDN, conn)
-				Globals.OutputAndLog(opt.logFile, data, 6, 8, 4, false)
-			default:
-				fmt.Println("Invalid command. Use command, \"help\" for available options.")
-			} // end 'module' switch
-		} else {
-			fmt.Print("Goodbye")
-			break
-		}
+				return nil
+			} else {
+				App.Println("No active LDAP connection. Please see the \"connect\" command to initialize.\n")
+				return nil
+			}
+		},
+	})
+
+	App.AddCommand(&grumble.Command{
+		Name:      "net",
+		Help:      "Run net commands",
+		HelpGroup: "Ldapper Queries:",
+
+		Args: func(a *grumble.Args) {
+			a.String("module", "module to use (user, group, or nestedGroups)")
+			a.String("query", "object to query (username or group name)")
+		},
+
+		Run: func(c *grumble.Context) error {
+			if Connected {
+
+				switch c.Args.String("module") {
+				case "group":
+					if LogFile != "" {
+						Globals.OutputAndLog(LogFile, "> "+"net group "+c.Args.String("query")+"\n", 0, 0, 0, true)
+					}
+					if Timestamping {
+						data := time.Now().Format("01/02/2006 03:04:05") + "\n\n"
+						data += Queries.ReturnGroupQuery(c.Args.String("query"), BaseDN, Conn)
+						Globals.OutputAndLog(LogFile, data, 12, 8, 4, false)
+					} else {
+						data := Queries.ReturnGroupQuery(c.Args.String("query"), BaseDN, Conn)
+						Globals.OutputAndLog(LogFile, data, 12, 8, 4, false)
+					}
+
+				case "user":
+					if LogFile != "" {
+						Globals.OutputAndLog(LogFile, "> "+"net user "+c.Args.String("query")+"\n", 0, 0, 0, true)
+					}
+					if Timestamping {
+						data := time.Now().Format("01/02/2006 03:04:05") + "\n\n"
+						data += Queries.NetUserQuery(c.Args.String("query"), BaseDN, Conn)
+						Globals.OutputAndLog(LogFile, data, 0, 8, 0, false)
+					} else {
+						data := Queries.NetUserQuery(c.Args.String("query"), BaseDN, Conn)
+						Globals.OutputAndLog(LogFile, data, 0, 8, 0, false)
+					}
+
+				case "nestedGroups":
+					if LogFile != "" {
+						Globals.OutputAndLog(LogFile, "> "+"net nestedGroups "+c.Args.String("query")+"\n", 0, 0, 0, true)
+					}
+					if Timestamping {
+						data := time.Now().Format("01/02/2006 03:04:05") + "\n\n"
+						data += Queries.ReturnNestedGroupQuery(c.Args.String("query"), BaseDN, Conn)
+						Globals.OutputAndLog(LogFile, data, 12, 8, 4, false)
+					} else {
+						data := Queries.ReturnNestedGroupQuery(c.Args.String("query"), BaseDN, Conn)
+						Globals.OutputAndLog(LogFile, data, 12, 8, 4, false)
+					}
+
+				default:
+					App.Println("Invalid search. Please use:")
+					App.Println("\tnet group <group>")
+					App.Println("\tnet nestedGroups <group>")
+					App.Println("\tnet user <user>")
+				}
+				return nil
+			} else {
+				App.Println("No active LDAP connection. Please see the \"connect\" command to initialize.\n")
+				return nil
+			}
+		},
+	})
+
+	App.AddCommand(&grumble.Command{
+		Name:      "connect",
+		Help:      "Connect to a LDAP server",
+		HelpGroup: "Initialize/Deinitialize:",
+
+		Flags: func(f *grumble.Flags) {
+			f.String("u", "username", "", "Username (username@domain)")
+			f.String("p", "password", "", "Password")
+			f.String("H", "ntlm", "", "Use NTLM Authentication")
+			f.Bool("k", "kerberos", false, "Use Kerberos Authentication. Grabs credentials from ccache file (KRB5CCNAME)")
+			f.String("d", "dc", "", "IP address or FQDN of target DC")
+			f.Bool("s", "ldaps", false, "Bind using LDAPS")
+			f.String("o", "output", "", "Log file")
+			f.String("4", "socks4", "", "SOCKS4 Proxy Address (ip:port)")
+			f.String("a", "socks4a", "", "SOCKS4A Proxy Address (ip:port)")
+			f.String("5", "socks5", "", "SOCKS5 Proxy Address (ip:port)")
+			f.Bool("t", "timestamps", false, "Enable timestamping")
+		},
+
+		Run: func(c *grumble.Context) error {
+			if c.Flags.String("username") == "" || c.Flags.String("dc") == "" || (c.Flags.String("password") == "" && c.Flags.String("ntlm") == "" && !c.Flags.Bool("kerberos")) {
+				App.Println("Improper usage. Please see sample usage below. For full list of arguments, see \"help connect\"")
+				fmt.Println("Examples:")
+				fmt.Println("\tWith Password: \tconnect -u <username@domain> -p <password> -dc <ip/FQDN> -s")
+				fmt.Println("\tWith Hash: \tconnect -u <username@domain> -H <hash> -dc <ip/FQDN> -s")
+				fmt.Println("\tWith Kerberos: \tconnect -u <username@domain> -k -dc <ip/FQDN> -s\n")
+				return nil
+			}
+
+			Timestamping = c.Flags.Bool("timestamps")
+
+			Target = strings.Split(c.Flags.String("username"), "@")
+
+			// Did the user supply the username correctly <user@domain>?
+			if len(Target) == 1 {
+				App.Println("Invalid input. Please use format username@domain.")
+				return nil
+			} else {
+				Username = Target[0]
+				Domain = Target[1]
+			}
+
+			//Initialize connection with proxy if specified
+			if c.Flags.String("socks4") != "" || c.Flags.String("socks4a") != "" || c.Flags.String("socks5") != "" {
+				if c.Flags.Bool("ldaps") {
+					Port = "636"
+				} else {
+					Port = "389"
+				}
+
+				if c.Flags.String("socks4") != "" {
+					//set socks to socks4
+					SocksType = socks.SOCKS4
+					SocksAddress = c.Flags.String("socks4")
+				} else if c.Flags.String("socks4a") != "" {
+					//set socks to socks4a
+					SocksType = socks.SOCKS4A
+					SocksAddress = c.Flags.String("socks4a")
+				} else if c.Flags.String("socks5") != "" {
+					//set socks to socks5
+					SocksType = socks.SOCKS5
+					SocksAddress = c.Flags.String("socks5")
+				}
+
+				// check for socks options
+				ProxyDial = socks.DialSocksProxy(SocksType, SocksAddress)
+
+				ProxyConn, Err = ProxyDial("tcp", fmt.Sprintf("%s:%s", c.Flags.String("dc"), Port))
+				if Err != nil {
+					//log.Fatal("Cannot connect through proxy.\n", err)
+					App.Printf("Cannot connect through proxy: %v\n", Err)
+					return nil
+				}
+
+				if c.Flags.Bool("ldaps") {
+					proxyTLS := tls.Client(ProxyConn, &tls.Config{InsecureSkipVerify: true})
+					Conn = ldap.NewConn(proxyTLS, c.Flags.Bool("ldaps"))
+				} else {
+					Conn = ldap.NewConn(ProxyConn, c.Flags.Bool("ldaps"))
+				}
+
+				Conn.Start()
+				fmt.Printf("Connecting with proxy: %s\n\n", SocksAddress)
+			} else { //Initialize without proxy
+				if c.Flags.Bool("ldaps") {
+					ldapsAddress := fmt.Sprintf("%s:%d", c.Flags.String("dc"), 636)
+					Conn, Err = ldap.DialTLS("tcp", ldapsAddress, &tls.Config{InsecureSkipVerify: true})
+					if Err != nil {
+
+					}
+
+				} else {
+					Conn, Err = ldap.DialURL(fmt.Sprintf("ldap://%s:%d", c.Flags.String("dc"), 389))
+					if Err != nil {
+						App.Printf("%v\n", Err)
+						return nil
+					}
+				}
+			}
+
+			// if password option set
+			if c.Flags.String("password") != "" {
+				Err = Conn.Bind(c.Flags.String("username"), c.Flags.String("password"))
+				if Err != nil {
+					App.Printf("%v\n", Err)
+					return nil
+				} else {
+					if Timestamping {
+						App.Println("Bind successful, opening connection. Timestamping enabled.\n ")
+					} else {
+						App.Println("Bind successful, opening connection.\n ")
+					}
+				}
+			}
+			// if ntlm hash option set
+			if c.Flags.String("ntlm") != "" {
+				Err = Conn.NTLMBindWithHash(Domain, Username, c.Flags.String("ntlm"))
+				if Err != nil {
+					App.Printf("%v\n", Err)
+					return nil
+				} else {
+					if Timestamping {
+						App.Println("Bind successful, opening connection. Timestamping enabled.\n ")
+					} else {
+						App.Println("Bind successful, opening connection.\n ")
+					}
+				}
+			}
+
+			// if kerberos option set
+			if c.Flags.Bool("kerberos") {
+				Cl = Globals.GetKerberosClient(Domain, c.Flags.String("dc"), Username, c.Flags.String("password"), c.Flags.String("ntlm"), c.Flags.Bool("kerberos"), "aes", SocksAddress, SocksType)
+
+				if Err != nil {
+					App.Printf("%v\n", Err)
+					return nil
+				}
+
+				machineName := Globals.GetMachineHostname(c.Flags.String("dc"), ProxyDial)
+
+				spnTarget := fmt.Sprintf("ldap/%s", machineName)
+
+				_, Err = Conn.GSSAPICCBindCCache(Cl, spnTarget)
+				if Err != nil {
+					App.Printf("%v\n", Err)
+					return nil
+				} else {
+					if Timestamping {
+						App.Println("Kerberos GSSAPI Bind succesful, opening connection. Timestamping enabled.\n ")
+					} else {
+						App.Println("Kerberos GSSAPI Bind succesful, opening connection.\n ")
+					}
+				}
+			}
+
+			//Set Global Variables
+			Connected = true
+			DC = c.Flags.String("dc")
+			Password = c.Flags.String("password")
+			NTLM = c.Flags.String("ntlm")
+			Ccache = c.Flags.Bool("kerberos")
+			BaseDN = Globals.GetBaseDN(c.Flags.String("dc"), Conn)
+			LDAPS = c.Flags.Bool("ldaps")
+
+			if c.Flags.String("output") != "" {
+				LogFile = c.Flags.String("output")
+			}
+
+			if c.Flags.Bool("ldaps") {
+				App.SetPrompt(fmt.Sprintf("%s@%s:636(s) » ", Username, c.Flags.String("dc")))
+			} else {
+				App.SetPrompt(fmt.Sprintf("%s@%s:389 » ", Username, c.Flags.String("dc")))
+			}
+			return nil
+		},
+	})
+
+	appErr := App.Run()
+	if appErr != nil {
+		fmt.Printf("Could not initialize Ldapper: %v", appErr)
 	}
+	if Connected {
+		defer Conn.Close()
+	}
+
 }

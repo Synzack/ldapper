@@ -210,10 +210,10 @@ func NetUserQuery(usernameInput string, baseDN string, conn *ldap.Conn) (queryRe
 			}
 
 		} else {
-			fmt.Println("Object class is of not of type \"user\".")
+			queryResult = "Object class is of not of type \"user\"\n."
 		} // end if result.Entries[0].GetAttributeValues("objectClass")[0] == "user"
 	} else {
-		fmt.Printf("No results for \"%s\", check query.", usernameInput)
+		queryResult = fmt.Sprintf("No results for \"%s\", check query.\n", usernameInput)
 	} // End of if result != 0
 	return
 }
