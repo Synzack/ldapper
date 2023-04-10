@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/go-ldap/ldap/v3"
+	"github.com/schollz/progressbar/v3"
 )
 
 func BruteUserQuery(inputname string, server string, threads int, outputFile string, secure bool) {
@@ -98,6 +99,15 @@ func BruteUserQuery(inputname string, server string, threads int, outputFile str
 				// Unlock mutex after connection is established
 				connectMutex.Unlock()
 
+				bar := progressbar.NewOptions(
+					-1,
+					progressbar.OptionSetDescription(fmt.Sprintf("Querying %v", server)),
+					progressbar.OptionSetPredictTime(false),
+					progressbar.OptionShowCount(),
+					// progressbar.OptionThrottle(500*time.Millisecond),
+					progressbar.OptionClearOnFinish(),
+				)
+
 				// Start processing users from inputBuffer
 				for user := range inputBuffer {
 					request := ldap.NewSearchRequest(
@@ -120,6 +130,8 @@ func BruteUserQuery(inputname string, server string, threads int, outputFile str
 					if len(res) > 2 && res[0] == 0x17 && res[1] == 00 {
 						outputBuffer <- user
 					}
+					bar.Add(1)
+					io.MultiWriter(os.Stdout, bar)
 
 				}
 				break
@@ -134,8 +146,10 @@ func BruteUserQuery(inputname string, server string, threads int, outputFile str
 		for user := range outputBuffer {
 			// this if statement is to console output issues when using the -o flag
 			if outputFile != "" {
+				fmt.Print("\033[2K\r") // clear line before printing
 				fmt.Println("[+] Found user: " + user)
 			} else {
+				fmt.Print("\033[2K\r") // clear line before printing
 				fmt.Print("[+] Found user: ")
 			}
 			fmt.Fprintln(output, user)
