@@ -505,9 +505,9 @@ func main() {
 			if c.Flags.String("username") == "" || c.Flags.String("dc") == "" || (c.Flags.String("password") == "" && c.Flags.String("ntlm") == "" && !c.Flags.Bool("kerberos")) {
 				App.Println("Improper usage. Please see sample usage below. For full list of arguments, see \"help connect\"")
 				fmt.Println("Examples:")
-				fmt.Println("\tWith Password: \tconnect -u <username@domain> -p <password> -dc <ip/FQDN> -s")
-				fmt.Println("\tWith Hash: \tconnect -u <username@domain> -H <hash> -dc <ip/FQDN> -s")
-				fmt.Println("\tWith Kerberos: \tconnect -u <username@domain> -k -dc <ip/FQDN> -s\n")
+				fmt.Println("\tWith Password: \tconnect -u <username@domain> -p <password> -d <ip/FQDN> -s")
+				fmt.Println("\tWith Hash: \tconnect -u <username@domain> -H <hash> -d <ip/FQDN> -s")
+				fmt.Println("\tWith Kerberos: \tconnect -u <username@domain> -k -d <ip/FQDN> -s\n")
 				return nil
 			}
 
