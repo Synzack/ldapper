@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/schollz/progressbar/v3"
@@ -17,6 +18,7 @@ import (
 func BruteUserQuery(inputname string, server string, threads int, outputFile string, secure bool) {
 
 	var err error
+	var totalInputLines int
 
 	// Open output file if specified
 	output := os.Stdout
@@ -41,9 +43,8 @@ func BruteUserQuery(inputname string, server string, threads int, outputFile str
 			// Count lines
 			linescanner := bufio.NewScanner(input)
 			linescanner.Split(bufio.ScanLines)
-			var lines int
 			for linescanner.Scan() {
-				lines++
+				totalInputLines++
 			}
 			input.Seek(0, io.SeekStart)
 		}
@@ -63,6 +64,16 @@ func BruteUserQuery(inputname string, server string, threads int, outputFile str
 
 	// Use waitgroup to wait for all threads to finish
 	var jobs sync.WaitGroup
+
+	bar := progressbar.NewOptions(
+		int(totalInputLines),
+		progressbar.OptionSetDescription(fmt.Sprintf("Querying %v", server)),
+		progressbar.OptionSetPredictTime(true),
+		progressbar.OptionThrottle(100*time.Millisecond),
+		progressbar.OptionUseANSICodes(true),
+		progressbar.OptionShowCount(),
+		progressbar.OptionClearOnFinish(),
+	)
 
 	// Add threads to waitgroup and start them
 	jobs.Add(threads)
@@ -99,15 +110,6 @@ func BruteUserQuery(inputname string, server string, threads int, outputFile str
 				// Unlock mutex after connection is established
 				connectMutex.Unlock()
 
-				bar := progressbar.NewOptions(
-					-1,
-					progressbar.OptionSetDescription(fmt.Sprintf("Querying %v", server)),
-					progressbar.OptionSetPredictTime(false),
-					progressbar.OptionShowCount(),
-					// progressbar.OptionThrottle(500*time.Millisecond),
-					progressbar.OptionClearOnFinish(),
-				)
-
 				// Start processing users from inputBuffer
 				for user := range inputBuffer {
 					request := ldap.NewSearchRequest(
@@ -132,7 +134,6 @@ func BruteUserQuery(inputname string, server string, threads int, outputFile str
 					}
 					bar.Add(1)
 					io.MultiWriter(os.Stdout, bar)
-
 				}
 				break
 			}
