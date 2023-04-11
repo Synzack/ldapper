@@ -67,12 +67,22 @@ func BruteUserQuery(inputname string, server string, threads int, outputFile str
 
 	bar := progressbar.NewOptions(
 		int(totalInputLines),
+		progressbar.OptionClearOnFinish(),
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionFullWidth(),
 		progressbar.OptionSetDescription(fmt.Sprintf("Querying %v", server)),
 		progressbar.OptionSetPredictTime(true),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			BarEnd:        "|",
+			BarStart:      "|",
+			Saucer:        "[cyan]█[reset]",
+			SaucerHead:    "[cyan]█[reset]",
+			SaucerPadding: " ",
+		}),
+		progressbar.OptionShowCount(),
+		progressbar.OptionShowIts(),
 		progressbar.OptionThrottle(100*time.Millisecond),
 		progressbar.OptionUseANSICodes(true),
-		progressbar.OptionShowCount(),
-		progressbar.OptionClearOnFinish(),
 	)
 
 	// Add threads to waitgroup and start them
