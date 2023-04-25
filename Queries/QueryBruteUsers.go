@@ -9,13 +9,16 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-ldap/ldap/v3"
+	"github.com/schollz/progressbar/v3"
 )
 
 func BruteUserQuery(inputname string, server string, threads int, outputFile string, secure bool) {
 
 	var err error
+	var totalInputLines int
 
 	// Open output file if specified
 	output := os.Stdout
@@ -40,9 +43,8 @@ func BruteUserQuery(inputname string, server string, threads int, outputFile str
 			// Count lines
 			linescanner := bufio.NewScanner(input)
 			linescanner.Split(bufio.ScanLines)
-			var lines int
 			for linescanner.Scan() {
-				lines++
+				totalInputLines++
 			}
 			input.Seek(0, io.SeekStart)
 		}
@@ -62,6 +64,26 @@ func BruteUserQuery(inputname string, server string, threads int, outputFile str
 
 	// Use waitgroup to wait for all threads to finish
 	var jobs sync.WaitGroup
+
+	bar := progressbar.NewOptions(
+		int(totalInputLines),
+		progressbar.OptionClearOnFinish(),
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionFullWidth(),
+		progressbar.OptionSetDescription(fmt.Sprintf("Querying %v", server)),
+		progressbar.OptionSetPredictTime(true),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			BarEnd:        "|",
+			BarStart:      "|",
+			Saucer:        "[cyan]█[reset]",
+			SaucerHead:    "[cyan]█[reset]",
+			SaucerPadding: " ",
+		}),
+		progressbar.OptionShowCount(),
+		progressbar.OptionShowIts(),
+		progressbar.OptionThrottle(100*time.Millisecond),
+		progressbar.OptionUseANSICodes(true),
+	)
 
 	// Add threads to waitgroup and start them
 	jobs.Add(threads)
@@ -120,7 +142,8 @@ func BruteUserQuery(inputname string, server string, threads int, outputFile str
 					if len(res) > 2 && res[0] == 0x17 && res[1] == 00 {
 						outputBuffer <- user
 					}
-
+					bar.Add(1)
+					io.MultiWriter(os.Stdout, bar)
 				}
 				break
 			}
@@ -134,8 +157,10 @@ func BruteUserQuery(inputname string, server string, threads int, outputFile str
 		for user := range outputBuffer {
 			// this if statement is to console output issues when using the -o flag
 			if outputFile != "" {
+				fmt.Print("\033[2K\r") // clear line before printing
 				fmt.Println("[+] Found user: " + user)
 			} else {
+				fmt.Print("\033[2K\r") // clear line before printing
 				fmt.Print("[+] Found user: ")
 			}
 			fmt.Fprintln(output, user)
